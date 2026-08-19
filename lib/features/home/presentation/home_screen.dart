@@ -229,16 +229,12 @@ class HomeScreen extends StatelessWidget {
               SectionHeader(
                 title: 'Market News & Catalysts',
                 actionLabel: 'More News',
-                onActionTap: () {},
+                onActionTap: () => context.push('/news'),
               ),
               const SizedBox(height: AppSpacing.sm),
               RecentNewsCard(
                 newsList: MockMarketData.latestNews,
-                onNewsTap: (news) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Opening: ${news.title}')),
-                  );
-                },
+                onNewsTap: (news) => context.push('/news'),
               ),
               const SizedBox(height: AppSpacing.xl),
 

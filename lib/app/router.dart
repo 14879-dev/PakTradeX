@@ -10,6 +10,9 @@ import '../features/auth/presentation/splash_screen.dart';
 import '../features/home/models/market_data_models.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/markets/presentation/markets_screen.dart';
+import '../features/news/models/news_item.dart';
+import '../features/news/presentation/news_detail_screen.dart';
+import '../features/news/presentation/news_screen.dart';
 import '../features/portfolio/presentation/portfolio_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/shell/presentation/main_shell_screen.dart';
@@ -52,6 +55,20 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/forgot-password',
       builder: (context, state) => const ForgotPasswordScreen(),
+    ),
+    GoRoute(
+      path: '/news',
+      builder: (context, state) => const NewsScreen(),
+      routes: [
+        GoRoute(
+          path: 'detail',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) {
+            final article = state.extra as NewsArticle;
+            return NewsDetailScreen(article: article);
+          },
+        ),
+      ],
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
