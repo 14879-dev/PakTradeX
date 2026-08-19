@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/api_client.dart';
 import '../models/ai_message.dart';
 
 class AiCopilotState {
@@ -84,6 +85,49 @@ class AiCopilotNotifier extends StateNotifier<AiCopilotState> {
     );
 
     await Future.delayed(const Duration(milliseconds: 750));
+
+    // Try live Backend Gemini AI call first
+    try {
+      final res = await apiClient.post('/copilot/query', data: {
+        'prompt': prompt,
+        'language': state.language,
+      });
+
+      if (res.statusCode == 200 && res.data is Map<String, dynamic>) {
+        final d = res.data as Map<String, dynamic>;
+        final text = d['text'] as String? ?? '';
+        final conf = (d['confidenceScore'] as num?)?.toDouble() ?? 0.95;
+        final sentStr = d['sentiment'] as String? ?? 'neutral';
+        final citList = (d['citations'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ['Gemini AI'];
+        final actList = (d['actionPrompts'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+        final sym = d['relatedStockSymbol'] as String?;
+
+        AiSentiment sentiment = AiSentiment.neutral;
+        if (sentStr == 'bullish') sentiment = AiSentiment.bullish;
+        if (sentStr == 'bearish') sentiment = AiSentiment.bearish;
+        if (sentStr == 'informative') sentiment = AiSentiment.informative;
+
+        final aiLiveResponse = AiMessage(
+          id: d['id'] as String? ?? 'ai-${DateTime.now().millisecondsSinceEpoch}',
+          text: text,
+          isUser: false,
+          timestamp: DateTime.now(),
+          confidenceScore: conf,
+          sentiment: sentiment,
+          relatedStockSymbol: sym,
+          citations: citList,
+          actionPrompts: actList,
+        );
+
+        state = state.copyWith(
+          messages: [...state.messages, aiLiveResponse],
+          isGenerating: false,
+        );
+        return;
+      }
+    } catch (_) {
+      // Backend offline or unreachable — fallback to local knowledge engine below
+    }
 
     final queryLower = prompt.toLowerCase();
     AiMessage aiResponse;

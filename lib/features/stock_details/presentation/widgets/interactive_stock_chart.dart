@@ -1,10 +1,12 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../../../app/theme/app_typography.dart';
+import '../../providers/stock_chart_provider.dart';
 
-class InteractiveStockChart extends StatefulWidget {
+class InteractiveStockChart extends ConsumerStatefulWidget {
   final String symbol;
   final double currentPrice;
   final double changePercent;
@@ -17,16 +19,16 @@ class InteractiveStockChart extends StatefulWidget {
   });
 
   @override
-  State<InteractiveStockChart> createState() => _InteractiveStockChartState();
+  ConsumerState<InteractiveStockChart> createState() => _InteractiveStockChartState();
 }
 
-class _InteractiveStockChartState extends State<InteractiveStockChart> {
+class _InteractiveStockChartState extends ConsumerState<InteractiveStockChart> {
   String _selectedTimeframe = '1D';
 
   final List<String> _timeframes = ['1D', '1W', '1M', '3M', '1Y', 'ALL'];
 
-  // Simulated price history per timeframe
-  Map<String, List<double>> get _priceData {
+  // Simulated fallback price history per timeframe if backend is offline
+  Map<String, List<double>> get _fallbackPriceData {
     final base = widget.currentPrice;
     return {
       '1D': [
@@ -64,9 +66,26 @@ class _InteractiveStockChartState extends State<InteractiveStockChart> {
   Widget build(BuildContext context) {
     final isPositive = widget.changePercent >= 0;
     final chartColor = isPositive ? AppColors.success : AppColors.danger;
-    final prices = _priceData[_selectedTimeframe] ?? [];
-    final minY = prices.reduce((a, b) => a < b ? a : b) * 0.999;
-    final maxY = prices.reduce((a, b) => a > b ? a : b) * 1.001;
+
+    // Fetch real live candles from provider
+    final chartAsync = ref.watch(stockChartProvider(StockChartParams(widget.symbol, _selectedTimeframe)));
+
+    List<double> prices = [];
+    bool isLiveSource = false;
+
+    chartAsync.whenData((candles) {
+      if (candles.isNotEmpty) {
+        prices = candles.map((c) => c.close).toList();
+        isLiveSource = true;
+      }
+    });
+
+    if (prices.isEmpty) {
+      prices = _fallbackPriceData[_selectedTimeframe] ?? [widget.currentPrice];
+    }
+
+    final minY = prices.reduce((a, b) => a < b ? a : b) * 0.995;
+    final maxY = prices.reduce((a, b) => a > b ? a : b) * 1.005;
 
     final spots = prices.asMap().entries
         .map((e) => FlSpot(e.key.toDouble(), e.value))
@@ -75,6 +94,52 @@ class _InteractiveStockChartState extends State<InteractiveStockChart> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Live data indicator badge
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Interactive Chart ($_selectedTimeframe)',
+              style: AppTypography.labelSmall.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isLiveSource
+                    ? AppColors.success.withValues(alpha: 0.12)
+                    : AppColors.textSecondary.withValues(alpha: 0.10),
+                borderRadius: AppRadius.roundedSm,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: isLiveSource ? AppColors.success : AppColors.textSecondary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    isLiveSource ? 'Live PSX Feed' : 'Simulated Feed',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: isLiveSource ? AppColors.success : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+
         // Chart Container
         Container(
           height: 200,
@@ -89,7 +154,7 @@ class _InteractiveStockChartState extends State<InteractiveStockChart> {
               gridData: FlGridData(
                 show: true,
                 drawVerticalLine: false,
-                horizontalInterval: (maxY - minY) / 4,
+                horizontalInterval: (maxY - minY) > 0 ? (maxY - minY) / 4 : 10,
                 getDrawingHorizontalLine: (value) => FlLine(
                   color: AppColors.borderSubtle,
                   strokeWidth: 1,

@@ -5,6 +5,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_typography.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../markets/providers/market_provider.dart';
 import '../../portfolio/presentation/widgets/deposit_cash_modal.dart';
 import '../../trading/providers/trading_provider.dart';
 import '../data/mock_market_data.dart';
@@ -204,9 +205,27 @@ class HomeScreen extends ConsumerWidget {
                 onActionTap: () => context.go('/markets'),
               ),
               const SizedBox(height: AppSpacing.sm),
-              MarketOverviewCard(
-                index: MockMarketData.kse100,
-                onTap: () => context.go('/markets'),
+              Builder(
+                builder: (context) {
+                  final marketState = ref.watch(marketProvider);
+                  final liveKse = MarketIndex(
+                    symbol: 'KSE-100',
+                    name: 'PSX Benchmark Index',
+                    currentPoints: marketState.overview.kse100Level,
+                    changePoints: marketState.overview.kse100Change,
+                    changePercent: marketState.overview.kse100ChangePercent,
+                    high: marketState.overview.kse100Level * 1.004,
+                    low: marketState.overview.kse100Level * 0.994,
+                    volume: 245.8,
+                    status: 'Market Open',
+                    sparkline: MockMarketData.kse100.sparkline,
+                  );
+
+                  return MarketOverviewCard(
+                    index: liveKse,
+                    onTap: () => context.go('/markets'),
+                  );
+                },
               ),
               const SizedBox(height: AppSpacing.xl),
 

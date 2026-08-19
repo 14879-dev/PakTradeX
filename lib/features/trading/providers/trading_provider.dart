@@ -1,4 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/api_client.dart';
 import '../models/trading_models.dart';
 
 class TradingPortfolioState {
@@ -31,12 +33,12 @@ class TradingPortfolioState {
 }
 
 class TradingNotifier extends StateNotifier<TradingPortfolioState> {
-  TradingNotifier()
+  TradingNotifier({bool autoSync = false})
       : super(
-          TradingPortfolioState(
+          const TradingPortfolioState(
             availableCash: 274300.00,
             holdings: [
-              const HoldingPosition(
+              HoldingPosition(
                 symbol: 'MCB',
                 name: 'MCB Bank Limited',
                 sector: 'Commercial Banks',
@@ -44,7 +46,7 @@ class TradingNotifier extends StateNotifier<TradingPortfolioState> {
                 avgBuyPrice: 290.00,
                 currentPrice: 322.40,
               ),
-              const HoldingPosition(
+              HoldingPosition(
                 symbol: 'ENGRO',
                 name: 'Engro Corporation',
                 sector: 'Fertilizer',
@@ -52,7 +54,7 @@ class TradingNotifier extends StateNotifier<TradingPortfolioState> {
                 avgBuyPrice: 440.00,
                 currentPrice: 481.20,
               ),
-              const HoldingPosition(
+              HoldingPosition(
                 symbol: 'OGDC',
                 name: 'Oil & Gas Development Co.',
                 sector: 'Oil & Gas',
@@ -60,7 +62,7 @@ class TradingNotifier extends StateNotifier<TradingPortfolioState> {
                 avgBuyPrice: 295.00,
                 currentPrice: 287.50,
               ),
-              const HoldingPosition(
+              HoldingPosition(
                 symbol: 'SYS',
                 name: 'Systems Limited',
                 sector: 'Technology',
@@ -71,9 +73,63 @@ class TradingNotifier extends StateNotifier<TradingPortfolioState> {
             ],
             orders: [],
           ),
-        );
+        ) {
+    if (autoSync) {
+      syncWithBackend();
+    }
+  }
 
-  /// Places a simulated Buy order
+  /// Syncs state with FastAPI backend if reachable
+  Future<void> syncWithBackend() async {
+    try {
+      final res = await apiClient.get('/trading/portfolio');
+      if (res.statusCode == 200 && res.data is Map<String, dynamic>) {
+        final data = res.data as Map<String, dynamic>;
+        final cash = (data['available_cash'] as num?)?.toDouble() ?? state.availableCash;
+        final rawHoldings = data['holdings'] as List<dynamic>? ?? [];
+        final rawOrders = data['orders'] as List<dynamic>? ?? [];
+
+        final holdings = rawHoldings.map((h) {
+          final hm = h as Map<String, dynamic>;
+          return HoldingPosition(
+            symbol: hm['symbol'] as String? ?? '',
+            name: hm['name'] as String? ?? '',
+            sector: hm['sector'] as String? ?? '',
+            shares: (hm['shares'] as num?)?.toInt() ?? 0,
+            avgBuyPrice: (hm['avg_buy_price'] as num?)?.toDouble() ?? 0.0,
+            currentPrice: (hm['current_price'] as num?)?.toDouble() ?? 0.0,
+          );
+        }).toList();
+
+        final orders = rawOrders.map((o) {
+          final om = o as Map<String, dynamic>;
+          return TradeOrder(
+            id: om['id'] as String? ?? '',
+            symbol: om['symbol'] as String? ?? '',
+            stockName: om['stock_name'] as String? ?? '',
+            side: om['side'] == 'buy' ? OrderSide.buy : OrderSide.sell,
+            type: OrderType.market,
+            quantity: (om['quantity'] as num?)?.toInt() ?? 0,
+            price: (om['price'] as num?)?.toDouble() ?? 0.0,
+            totalValue: (om['total_value'] as num?)?.toDouble() ?? 0.0,
+            fee: (om['fee'] as num?)?.toDouble() ?? 0.0,
+            status: OrderStatus.executed,
+            createdAt: DateTime.tryParse(om['created_at'] as String? ?? '') ?? DateTime.now(),
+          );
+        }).toList();
+
+        state = TradingPortfolioState(
+          availableCash: cash,
+          holdings: holdings.isNotEmpty ? holdings : state.holdings,
+          orders: orders,
+        );
+      }
+    } catch (_) {
+      // Backend not running or offline; local state maintained
+    }
+  }
+
+  /// Places a Buy order with backend sync & optimistic update
   Future<String?> placeBuyOrder({
     required String symbol,
     required String stockName,
@@ -139,10 +195,21 @@ class TradingNotifier extends StateNotifier<TradingPortfolioState> {
       orders: [newOrder, ...state.orders],
     );
 
+    // Async backend notify
+    apiClient.post('/trading/orders', data: {
+      'symbol': symbol,
+      'stock_name': stockName,
+      'sector': sector,
+      'side': 'buy',
+      'type': 'market',
+      'quantity': quantity,
+      'price': price,
+    }).catchError((_) => Response(requestOptions: RequestOptions()));
+
     return null; // Success
   }
 
-  /// Places a simulated Sell order
+  /// Places a Sell order with backend sync & optimistic update
   Future<String?> placeSellOrder({
     required String symbol,
     required int quantity,
@@ -194,10 +261,20 @@ class TradingNotifier extends StateNotifier<TradingPortfolioState> {
       orders: [newOrder, ...state.orders],
     );
 
+    // Async backend notify
+    apiClient.post('/trading/orders', data: {
+      'symbol': symbol,
+      'stock_name': existing.name,
+      'side': 'sell',
+      'type': 'market',
+      'quantity': quantity,
+      'price': price,
+    }).catchError((_) => Response(requestOptions: RequestOptions()));
+
     return null; // Success
   }
 
-  /// Adds simulated demo cash to the wallet balance
+  /// Adds simulated demo cash to the wallet balance and syncs backend
   void depositCash(double amount) {
     if (amount <= 0) return;
     state = TradingPortfolioState(
@@ -205,6 +282,9 @@ class TradingNotifier extends StateNotifier<TradingPortfolioState> {
       holdings: state.holdings,
       orders: state.orders,
     );
+
+    apiClient.post('/trading/deposit', queryParameters: {'amount': amount})
+        .catchError((_) => Response(requestOptions: RequestOptions()));
   }
 
   /// Withdraws simulated demo cash from available balance
@@ -226,6 +306,9 @@ class TradingNotifier extends StateNotifier<TradingPortfolioState> {
       holdings: [],
       orders: [],
     );
+
+    apiClient.post('/trading/reset')
+        .catchError((_) => Response(requestOptions: RequestOptions()));
   }
 }
 

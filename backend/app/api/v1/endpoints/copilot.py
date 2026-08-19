@@ -1,47 +1,55 @@
+"""
+AI Copilot endpoint — powered by Gemini 2.0 Flash with live PSX market context.
+"""
+import re
+import uuid
 from fastapi import APIRouter
 from ...schemas.api_schemas import CopilotQuery, CopilotResponse
-import uuid
+from ...services import gemini_service
 
 router = APIRouter()
 
+# Extract a stock symbol from the user prompt (e.g. "analyze MCB" → "MCB")
+_SYMBOLS = {"MCB", "ENGRO", "OGDC", "SYS", "HBL", "LUCK", "PSO", "PPL", "FFC", "UBL",
+            "BAHL", "MEBL", "ATRL", "HUBC", "MARI", "KAPCO"}
+
+
+def _extract_symbol(prompt: str) -> str | None:
+    words = re.split(r"\W+", prompt.upper())
+    for word in words:
+        if word in _SYMBOLS:
+            return word
+    return None
+
+
 @router.post("/query", response_model=CopilotResponse)
 async def query_ai_copilot(query: CopilotQuery):
-    q_lower = query.prompt.lower()
-    
-    if "mcb" in q_lower:
-        return CopilotResponse(
-            id=f"ai-{uuid.uuid4().hex[:8]}",
-            text="MCB Bank Limited demonstrates industry-leading cost-to-income efficiency, high CASA ratio (70%+), and strong quarterly dividend coverage. P/E is 5.4x vs Sector Avg 6.2x.",
-            confidenceScore=0.96,
-            sentiment="bullish",
-            citations=["MCB Annual Report 2024", "SBP Banking Review"],
-            actionPrompts=["Analyze MCB vs MEBL", "View MCB Order Book"],
-            relatedStockSymbol="MCB"
-        )
-    elif "dividend" in q_lower or "yield" in q_lower:
-        return CopilotResponse(
-            id=f"ai-{uuid.uuid4().hex[:8]}",
-            text="Top PSX dividend champions include HUBC (~15.1%), MCB (~12.8%), OGDC (~11.2%), and ENGRO (~9.5%). High yield should be confirmed with healthy operating cash flows.",
-            confidenceScore=0.95,
-            sentiment="bullish",
-            citations=["PSX Dividend Database", "MUFAP Analysis"],
-            actionPrompts=["Analyze HUBC", "Analyze OGDC"]
-        )
-    elif "urdu" in q_lower:
-        return CopilotResponse(
-            id=f"ai-{uuid.uuid4().hex[:8]}",
-            text="پی/ای ریشو (P/E Ratio) کمپنی کے منافع اور شیئر کی قیمت کے درمیان تعلق کو ظاہر کرتا ہے۔ مناسب P/E ریشو والے حصص سرمایہ کاری کے لیے پرکشش سمجھے جاتے ہیں۔",
-            confidenceScore=0.98,
-            sentiment="informative",
-            citations=["SECP Jamapunji Financial Literacy Guide"],
-            actionPrompts=["Explain Dividends in Urdu", "Explain Stop Loss in Urdu"]
-        )
-    else:
-        return CopilotResponse(
-            id=f"ai-{uuid.uuid4().hex[:8]}",
-            text="Pakistan Stock Exchange (KSE-100) continues to be supported by positive institutional mutual fund inflows and expectations of single-digit inflation.",
-            confidenceScore=0.92,
-            sentiment="neutral",
-            citations=["PSX Daily Report", "SBP Monetary Policy Release"],
-            actionPrompts=["Analyze Banking Sector", "Analyze IT Sector"]
-        )
+    """Query the Gemini-powered AI Copilot with live market context injection."""
+    symbol = _extract_symbol(query.prompt)
+
+    result = await gemini_service.chat(
+        user_message=query.prompt,
+        symbol=symbol,
+    )
+
+    return CopilotResponse(
+        id=f"ai-{uuid.uuid4().hex[:8]}",
+        text=result.get("response", ""),
+        confidenceScore=float(result.get("confidence", 7.0)) / 10.0,
+        sentiment=result.get("sentiment", "neutral"),
+        citations=result.get("sources", ["Gemini AI", "PSX Data"]),
+        actionPrompts=_build_action_prompts(symbol, query.prompt),
+        relatedStockSymbol=symbol,
+    )
+
+
+def _build_action_prompts(symbol: str | None, prompt: str) -> list[str]:
+    prompts = []
+    if symbol:
+        prompts.append(f"Show {symbol} chart")
+        prompts.append(f"Compare {symbol} vs sector")
+    if "shariah" not in prompt.lower():
+        prompts.append("Is this Shariah compliant?")
+    if "dividend" not in prompt.lower():
+        prompts.append("What is the dividend yield?")
+    return prompts[:4]
