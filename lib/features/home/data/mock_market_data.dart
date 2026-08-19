@@ -149,6 +149,8 @@ abstract class MockMarketData {
     ),
   ];
 
+  static List<StockQuote> get allStocks => [...topGainers, ...topLosers];
+
   static final AiMarketBrief dailyAiBrief = AiMarketBrief(
     headline: 'PSX Gains Momentum as KSE-100 Breaks 78,400 Resistance',
     summary:

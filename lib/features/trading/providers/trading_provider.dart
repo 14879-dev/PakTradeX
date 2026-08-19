@@ -196,6 +196,28 @@ class TradingNotifier extends StateNotifier<TradingPortfolioState> {
 
     return null; // Success
   }
+
+  /// Adds simulated demo cash to the wallet balance
+  void depositCash(double amount) {
+    if (amount <= 0) return;
+    state = TradingPortfolioState(
+      availableCash: state.availableCash + amount,
+      holdings: state.holdings,
+      orders: state.orders,
+    );
+  }
+
+  /// Withdraws simulated demo cash from available balance
+  String? withdrawCash(double amount) {
+    if (amount <= 0) return 'Withdrawal amount must be greater than zero.';
+    if (amount > state.availableCash) return 'Insufficient available cash to withdraw.';
+    state = TradingPortfolioState(
+      availableCash: state.availableCash - amount,
+      holdings: state.holdings,
+      orders: state.orders,
+    );
+    return null;
+  }
 }
 
 final tradingProvider = StateNotifierProvider<TradingNotifier, TradingPortfolioState>((ref) {
