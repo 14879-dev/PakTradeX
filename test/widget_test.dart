@@ -3,18 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:paktradex/app/app.dart';
 
 void main() {
-  testWidgets('PakTradeX App launches with Splash and Brand title', (WidgetTester tester) async {
+  testWidgets('PakTradeX App launches with Splash and transitions to Onboarding', (WidgetTester tester) async {
     await tester.pumpWidget(
       const ProviderScope(
         child: PakTradeXApp(),
       ),
     );
 
-    // Let splash timer elapse and route to HomeScreen
+    // Advance splash delay
     await tester.pumpAndSettle();
 
-    // Verify Home Screen Header loaded
-    expect(find.text('Market Overview'), findsOneWidget);
-    expect(find.text('AI Intelligence'), findsOneWidget);
+    // Verify Onboarding carousel header loaded
+    expect(find.textContaining('Invest in Pakistan'), findsOneWidget);
+    expect(find.text('Continue'), findsOneWidget);
   });
 }
