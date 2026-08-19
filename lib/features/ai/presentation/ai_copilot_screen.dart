@@ -1,51 +1,104 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_typography.dart';
+import '../providers/ai_copilot_provider.dart';
+import 'widgets/ai_message_bubble.dart';
 
-class AiCopilotScreen extends StatefulWidget {
+class AiCopilotScreen extends ConsumerStatefulWidget {
   const AiCopilotScreen({super.key});
 
   @override
-  State<AiCopilotScreen> createState() => _AiCopilotScreenState();
+  ConsumerState<AiCopilotScreen> createState() => _AiCopilotScreenState();
 }
 
-class _AiCopilotScreenState extends State<AiCopilotScreen> {
+class _AiCopilotScreenState extends ConsumerState<AiCopilotScreen> {
   final TextEditingController _controller = TextEditingController();
-  final List<Map<String, String>> _messages = [
-    {
-      'role': 'ai',
-      'text':
-          'Assalam-o-Alaikum! I am your PakTradeX AI Financial Copilot.\n\nI can analyze PSX stocks, explain Pakistani financial terms in English or Urdu, screen high-dividend stocks, and review your portfolio health.\n\nHow can I assist your investment research today?',
-    },
-  ];
+  final ScrollController _scrollController = ScrollController();
 
   final List<String> _suggestedPrompts = [
     'Analyze MCB Bank fundamentals',
-    'Find high dividend PSX stocks',
+    'High dividend PSX stocks',
+    'Is SYS Shariah compliant?',
     'Explain P/E ratio in Urdu',
-    'How does KSE-100 index work?',
+    'Current KSE-100 outlook',
+    'What is Circular Debt impact?',
   ];
 
   @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _sendQuery(String prompt) {
+    if (prompt.trim().isEmpty) return;
+    _controller.clear();
+    ref.read(aiCopilotProvider.notifier).sendUserQuery(prompt);
+    _scrollToBottom();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final aiState = ref.watch(aiCopilotProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(Icons.auto_awesome, color: AppColors.aiAccent, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'PakTradeX AI Copilot',
-              style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: AppColors.aiAccentLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.auto_awesome, color: AppColors.aiAccent, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'PakTradeX AI Copilot',
+                  style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  'Pakistan Capital Markets LLM',
+                  style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary, fontSize: 10),
+                ),
+              ],
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textSecondary),
+            tooltip: 'Clear Chat Session',
+            onPressed: () {
+              ref.read(aiCopilotProvider.notifier).clearChat();
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: Column(
         children: [
-          // Suggested prompts
+          // Suggested prompts horizontally scrollable
           Container(
             color: AppColors.surface,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -56,13 +109,17 @@ class _AiCopilotScreenState extends State<AiCopilotScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(right: 8.0),
                     child: ActionChip(
-                      label: Text(prompt),
-                      labelStyle: AppTypography.labelSmall.copyWith(color: AppColors.primary),
+                      label: Text(
+                        prompt,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       backgroundColor: AppColors.primaryLight,
                       side: BorderSide.none,
-                      onPressed: () {
-                        _sendMessage(prompt);
-                      },
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      onPressed: () => _sendQuery(prompt),
                     ),
                   );
                 }).toList(),
@@ -71,47 +128,37 @@ class _AiCopilotScreenState extends State<AiCopilotScreen> {
           ),
           const Divider(height: 1),
 
-          // Chat messages list
+          // Messages list
           Expanded(
             child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
+              itemCount: aiState.messages.length + (aiState.isGenerating ? 1 : 0),
               itemBuilder: (context, index) {
-                final msg = _messages[index];
-                final isUser = msg['role'] == 'user';
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: Align(
-                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isUser ? AppColors.primary : AppColors.surface,
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(14),
-                          topRight: const Radius.circular(14),
-                          bottomLeft: Radius.circular(isUser ? 14 : 2),
-                          bottomRight: Radius.circular(isUser ? 2 : 14),
-                        ),
-                        border: isUser ? null : Border.all(color: AppColors.border),
-                        boxShadow: AppShadows.subtle,
-                      ),
-                      child: Text(
-                        msg['text']!,
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: isUser ? Colors.white : AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
+                if (index == aiState.messages.length && aiState.isGenerating) {
+                  return _buildTypingIndicator();
+                }
+                final message = aiState.messages[index];
+                return AiMessageBubble(
+                  message: message,
+                  onActionPromptTap: _sendQuery,
                 );
               },
             ),
           ),
 
-          // Message Input Field
+          // Educational Disclaimer
+          Container(
+            color: AppColors.background,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text(
+              '⚠ AI responses are for simulated financial literacy and research only. Not regulated investment advice.',
+              style: AppTypography.bodySmall.copyWith(fontSize: 10, color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ),
+
+          // Chat Input field
           Container(
             color: AppColors.surface,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -122,8 +169,9 @@ class _AiCopilotScreenState extends State<AiCopilotScreen> {
                     child: TextField(
                       controller: _controller,
                       decoration: InputDecoration(
-                        hintText: 'Ask AI about PSX stocks or market trends...',
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        hintText: 'Ask about PSX stocks, ratios, Shariah compliance...',
+                        hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary, fontSize: 13),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                         filled: true,
                         fillColor: AppColors.background,
                         border: OutlineInputBorder(
@@ -131,16 +179,12 @@ class _AiCopilotScreenState extends State<AiCopilotScreen> {
                           borderSide: const BorderSide(color: AppColors.border),
                         ),
                       ),
-                      onSubmitted: _sendMessage,
+                      onSubmitted: _sendQuery,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   IconButton.filled(
-                    onPressed: () {
-                      if (_controller.text.isNotEmpty) {
-                        _sendMessage(_controller.text);
-                      }
-                    },
+                    onPressed: aiState.isGenerating ? null : () => _sendQuery(_controller.text),
                     icon: const Icon(Icons.send_rounded, size: 18),
                     style: IconButton.styleFrom(
                       backgroundColor: AppColors.primary,
@@ -156,44 +200,49 @@ class _AiCopilotScreenState extends State<AiCopilotScreen> {
     );
   }
 
-  void _sendMessage(String text) {
-    if (text.trim().isEmpty) return;
-
-    setState(() {
-      _messages.add({'role': 'user', 'text': text});
-    });
-    _controller.clear();
-
-    // Simulated Intelligent Response
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      setState(() {
-        if (text.toLowerCase().contains('mcb')) {
-          _messages.add({
-            'role': 'ai',
-            'text':
-                '📊 **MCB Bank Limited (PSX: MCB)** Analysis:\n\n• **Price**: Rs. 322.40 (+2.14%)\n• **P/E Ratio**: 5.4x (Sector Avg: 6.2x)\n• **Dividend Yield**: 12.8% (High)\n• **ROE**: ~31.2%\n\n💡 **AI Verdict**: MCB is one of the highest quality banks in Pakistan with strong asset quality, record NIMs, and a reliable quarterly dividend track record.',
-          });
-        } else if (text.toLowerCase().contains('dividend')) {
-          _messages.add({
-            'role': 'ai',
-            'text':
-                '📈 **Top High Dividend Yield Stocks on PSX**:\n\n1. **HUBC** (Hub Power) ~ 15.1% Yield\n2. **MCB** (MCB Bank) ~ 12.8% Yield\n3. **OGDC** (Oil & Gas) ~ 11.2% Yield\n4. **ENGRO** (Engro Corp) ~ 9.5% Yield\n\n*Note: High dividend yields should be balanced with earnings stability and corporate debt levels.*',
-          });
-        } else if (text.toLowerCase().contains('urdu') || text.toLowerCase().contains('p/e')) {
-          _messages.add({
-            'role': 'ai',
-            'text':
-                '📖 **P/E Ratio (Price-to-Earnings) کی آسان وضاحت**:\n\nپی/ای ریشو بتاتا ہے کہ کمپنی کے 1 روپے کے منافع (Earnings) کے بدلے سرمایہ کار مارکیٹ میں کتنی قیمت ادا کرنے کو تیار ہیں۔ اگر کسی کمپنی کا P/E کم ہے، تو عام طور پر اس کا شیئر سستا سمجھا جاتا ہے۔',
-          });
-        } else {
-          _messages.add({
-            'role': 'ai',
-            'text':
-                'I have retrieved real-time contextual data for the Pakistan Stock Exchange. The market sentiment is currently **Bullish** with KSE-100 trading at **78,420 points**. High institutional liquidity and robust dividend yield forecasts continue to support equities.',
-          });
-        }
-      });
-    });
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: AppColors.aiAccentLight,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.auto_awesome, size: 16, color: AppColors.aiAccent),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: AppRadius.roundedMd,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.aiAccent),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Copilot is analyzing PSX data...',
+                  style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
