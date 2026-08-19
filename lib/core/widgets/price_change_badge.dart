@@ -4,7 +4,7 @@ import '../../app/theme/app_spacing.dart';
 import '../../app/theme/app_typography.dart';
 
 /// Pill badge showing positive/negative price movement.
-/// Accessible: Uses both color and explicit +/- sign.
+/// Accessible: Uses both color and explicit +/- sign with overflow protection.
 class PriceChangeBadge extends StatelessWidget {
   final double changePercent;
   final double? changeAmount;
@@ -40,23 +40,28 @@ class PriceChangeBadge extends StatelessWidget {
         color: bgColor,
         borderRadius: AppRadius.roundedSm,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-            size: isCompact ? 14 : 16,
-            color: textColor,
-          ),
-          Text(
-            text,
-            style: AppTypography.financialSmall.copyWith(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+              size: isCompact ? 14 : 16,
               color: textColor,
-              fontSize: isCompact ? 11 : 12,
-              fontWeight: FontWeight.w700,
             ),
-          ),
-        ],
+            Text(
+              text,
+              style: AppTypography.financialSmall.copyWith(
+                color: textColor,
+                fontSize: isCompact ? 11 : 12,
+                fontWeight: FontWeight.w700,
+              ),
+              maxLines: 1,
+            ),
+          ],
+        ),
       ),
     );
   }

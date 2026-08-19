@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_typography.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../portfolio/presentation/widgets/deposit_cash_modal.dart';
+import '../../trading/providers/trading_provider.dart';
 import '../data/mock_market_data.dart';
+import '../models/market_data_models.dart';
 import 'widgets/ai_market_brief_card.dart';
 import 'widgets/market_movers_card.dart';
 import 'widgets/market_overview_card.dart';
 import 'widgets/portfolio_summary_card.dart';
 import 'widgets/recent_news_card.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -129,11 +133,33 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // 1. Portfolio Summary Card
-              PortfolioSummaryCard(
-                summary: MockMarketData.demoPortfolio,
-                onDepositTap: () => _showDemoDialog(context, 'Demo Deposit'),
-                onWithdrawTap: () => _showDemoDialog(context, 'Demo Withdrawal'),
+              // 1. Portfolio Summary Card (Live Reactive)
+              Builder(
+                builder: (context) {
+                  final trading = ref.watch(tradingProvider);
+                  final dynamicSummary = PortfolioSummary(
+                    totalBalance: trading.totalPortfolioValue,
+                    investedAmount: trading.totalInvested,
+                    cashBalance: trading.availableCash,
+                    todaysPnl: trading.totalUnrealizedPnl,
+                    todaysPnlPercent: trading.totalPnlPercent,
+                    totalPnl: trading.totalUnrealizedPnl,
+                    totalPnlPercent: trading.totalPnlPercent,
+                  );
+
+                  return PortfolioSummaryCard(
+                    summary: dynamicSummary,
+                    onDepositTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const DepositCashModal(),
+                      );
+                    },
+                    onWithdrawTap: () => context.go('/portfolio'),
+                  );
+                },
               ),
               const SizedBox(height: AppSpacing.lg),
 
@@ -317,25 +343,6 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _showDemoDialog(BuildContext context, String action) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(action, style: AppTypography.titleMedium),
-        content: Text(
-          '$action is simulated in this MVP. Future integration will connect to licensed payment gateways (EasyPaisa, JazzCash, Raast, 1Link).',
-          style: AppTypography.bodyMedium,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
       ),
     );
   }

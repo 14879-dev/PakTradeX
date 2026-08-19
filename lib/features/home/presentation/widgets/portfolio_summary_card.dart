@@ -48,7 +48,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
           ),
         ],
       ),
-      padding: AppSpacing.cardPadding,
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -56,23 +56,20 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: AppRadius.roundedSm,
-                    ),
-                    child: Text(
-                      'DEMO PORTFOLIO',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        letterSpacing: 0.8,
-                      ),
-                    ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: AppRadius.roundedSm,
+                ),
+                child: Text(
+                  'DEMO PORTFOLIO',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    letterSpacing: 0.8,
+                    fontSize: 10,
                   ),
-                ],
+                ),
               ),
               IconButton(
                 icon: Icon(
@@ -93,24 +90,30 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          // Total Balance Label & Amount
+          // Total Balance Label & Amount (Fitted to never overflow)
           Text(
             'Total Portfolio Value',
             style: AppTypography.bodySmall.copyWith(
               color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 11,
             ),
           ),
           const SizedBox(height: AppSpacing.xxs),
-          Text(
-            _hideBalance ? 'PKR ••••••••' : 'Rs. ${currencyFormat.format(widget.summary.totalBalance)}',
-            style: AppTypography.displayMedium.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _hideBalance ? 'PKR ••••••••' : 'Rs. ${currencyFormat.format(widget.summary.totalBalance)}',
+              style: AppTypography.displayMedium.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 26,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
 
-          // PnL Stats in row
+          // PnL Stats in row with safe layout
           Row(
             children: [
               Expanded(
@@ -121,22 +124,28 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                       "Today's Return",
                       style: AppTypography.bodySmall.copyWith(
                         color: Colors.white.withValues(alpha: 0.65),
+                        fontSize: 11,
                       ),
                     ),
                     const SizedBox(height: 3),
-                    PriceChangeBadge(
-                      changePercent: widget.summary.todaysPnlPercent,
-                      changeAmount: widget.summary.todaysPnl,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: PriceChangeBadge(
+                        changePercent: widget.summary.todaysPnlPercent,
+                        changeAmount: widget.summary.todaysPnl,
+                        isCompact: true,
+                      ),
                     ),
                   ],
                 ),
               ),
               Container(
-                height: 32,
+                height: 28,
                 width: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
                 color: Colors.white.withValues(alpha: 0.15),
               ),
-              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,19 +154,25 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                       'Overall Return',
                       style: AppTypography.bodySmall.copyWith(
                         color: Colors.white.withValues(alpha: 0.65),
+                        fontSize: 11,
                       ),
                     ),
                     const SizedBox(height: 3),
-                    PriceChangeBadge(
-                      changePercent: widget.summary.totalPnlPercent,
-                      changeAmount: widget.summary.totalPnl,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: PriceChangeBadge(
+                        changePercent: widget.summary.totalPnlPercent,
+                        changeAmount: widget.summary.totalPnl,
+                        isCompact: true,
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
 
           // Action Buttons: Quick Deposit & Quick Withdraw (Demo)
           Row(
@@ -165,12 +180,12 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: widget.onDepositTap,
-                  icon: const Icon(Icons.arrow_downward_rounded, size: 16),
-                  label: const Text('Deposit'),
+                  icon: const Icon(Icons.arrow_downward_rounded, size: 15),
+                  label: const Text('Deposit Funds', style: TextStyle(fontSize: 12)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
                     shape: const RoundedRectangleBorder(
                       borderRadius: AppRadius.roundedMd,
                     ),
@@ -182,12 +197,12 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: widget.onWithdrawTap,
-                  icon: const Icon(Icons.arrow_upward_rounded, size: 16),
-                  label: const Text('Withdraw'),
+                  icon: const Icon(Icons.arrow_upward_rounded, size: 15),
+                  label: const Text('Withdraw', style: TextStyle(fontSize: 12)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side: BorderSide(color: Colors.white.withValues(alpha: 0.3), width: 1.2),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
                     shape: const RoundedRectangleBorder(
                       borderRadius: AppRadius.roundedMd,
                     ),
