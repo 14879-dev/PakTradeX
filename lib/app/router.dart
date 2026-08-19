@@ -17,13 +17,13 @@ import '../features/portfolio/presentation/portfolio_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/shell/presentation/main_shell_screen.dart';
 import '../features/stock_details/presentation/stock_detail_screen.dart';
+import '../features/trading/presentation/trade_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _homeNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _marketsNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> _tradeNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _portfolioNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _aiNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _profileNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
@@ -57,6 +57,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ForgotPasswordScreen(),
     ),
     GoRoute(
+      path: '/profile',
+      builder: (context, state) => const ProfileScreen(),
+    ),
+    GoRoute(
+      path: '/ai',
+      builder: (context, state) => const AiCopilotScreen(),
+    ),
+    GoRoute(
       path: '/news',
       builder: (context, state) => const NewsScreen(),
       routes: [
@@ -75,6 +83,7 @@ final GoRouter appRouter = GoRouter(
         return MainShellScreen(navigationShell: navigationShell);
       },
       branches: [
+        // Branch 0: Home
         StatefulShellBranch(
           navigatorKey: _homeNavigatorKey,
           routes: [
@@ -94,6 +103,8 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
+
+        // Branch 1: Markets
         StatefulShellBranch(
           navigatorKey: _marketsNavigatorKey,
           routes: [
@@ -113,30 +124,25 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
+
+        // Branch 2: Trade
+        StatefulShellBranch(
+          navigatorKey: _tradeNavigatorKey,
+          routes: [
+            GoRoute(
+              path: '/trade',
+              builder: (context, state) => const TradeScreen(),
+            ),
+          ],
+        ),
+
+        // Branch 3: Assets (Portfolio)
         StatefulShellBranch(
           navigatorKey: _portfolioNavigatorKey,
           routes: [
             GoRoute(
               path: '/portfolio',
               builder: (context, state) => const PortfolioScreen(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          navigatorKey: _aiNavigatorKey,
-          routes: [
-            GoRoute(
-              path: '/ai',
-              builder: (context, state) => const AiCopilotScreen(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          navigatorKey: _profileNavigatorKey,
-          routes: [
-            GoRoute(
-              path: '/profile',
-              builder: (context, state) => const ProfileScreen(),
             ),
           ],
         ),

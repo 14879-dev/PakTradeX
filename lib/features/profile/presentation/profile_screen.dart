@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_typography.dart';
+import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../portfolio/presentation/widgets/deposit_cash_modal.dart';
+import '../../portfolio/presentation/widgets/p2p_transfer_modal.dart';
 import '../../trading/providers/trading_provider.dart';
+import '../providers/account_provider.dart';
+import 'widgets/kyc_verification_modal.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -21,6 +26,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _biometricEnabled = true;
   bool _twoFactorEnabled = true;
   String _riskProfile = 'Moderate Growth';
+
+  void _openKycModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const KycVerificationModal(),
+    );
+  }
+
+  void _openTransferModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const P2pTransferModal(),
+    );
+  }
 
   void _showRegulatoryDisclosures() {
     showDialog(
@@ -40,15 +63,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'PakTradeX Simulation & Risk Notice',
+                'PakTradeX SECP & CDC Compliance',
                 style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 6),
               Text(
-                'PakTradeX is a simulated investment learning platform and research copilot for the Pakistan capital market.\n\n'
-                '• All trades executed within the application are simulated with virtual currency.\n'
-                '• PakTradeX is not a licensed broker-dealer or securities exchange under the Securities and Exchange Commission of Pakistan (SECP).\n'
-                '• Past simulated performance does not guarantee future financial returns.',
+                'PakTradeX provides simulated sandbox training and real-money execution through regulated SECP brokers.\n\n'
+                '• Real mode trades settle via the Central Depository Company (CDC) of Pakistan.\n'
+                '• Demo mode runs completely risk-free with virtual capital.\n'
+                '• P2P transfers are executed instantly between verified PakTrade ID holders.',
                 style: AppTypography.bodySmall.copyWith(height: 1.45),
               ),
             ],
@@ -120,61 +143,232 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final currency = NumberFormat('#,##0.00', 'en_US');
     final auth = ref.watch(authProvider);
+    final account = ref.watch(accountProvider);
     final portfolio = ref.watch(tradingProvider);
-    final userEmail = auth.user?.email ?? 'investor@paktradex.pk';
+    final userEmail = auth.user?.email ?? 'syed.ali@paktradex.pk';
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(
-          'Account & Settings',
-          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
         ),
+        title: Text(
+          'Account & Profile',
+          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w800),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            onPressed: _openTransferModal,
+            tooltip: 'P2P Transfer',
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // User Profile Header Card
-            AppCard(
+            // Mode Switcher Segment (Demo vs Real)
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: AppRadius.roundedMd,
+                border: Border.all(color: AppColors.border),
+                boxShadow: AppShadows.subtle,
+              ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: AppColors.primary,
-                    child: Text(
-                      userEmail.substring(0, userEmail.length >= 2 ? 2 : 1).toUpperCase(),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        ref.read(accountProvider.notifier).switchMode(AccountMode.demo);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: account.isDemoMode ? AppColors.warning : Colors.transparent,
+                          borderRadius: AppRadius.roundedSm,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.code_rounded,
+                              size: 16,
+                              color: account.isDemoMode ? Colors.white : AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Demo Account',
+                              style: TextStyle(
+                                color: account.isDemoMode ? Colors.white : AppColors.textSecondary,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'PSX Trader',
-                          style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700),
+                    child: GestureDetector(
+                      onTap: () {
+                        if (!account.isKycVerified) {
+                          _openKycModal();
+                        } else {
+                          ref.read(accountProvider.notifier).switchMode(AccountMode.real);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: account.isRealMode ? AppColors.success : Colors.transparent,
+                          borderRadius: AppRadius.roundedSm,
                         ),
-                        Text(
-                          userEmail,
-                          style: AppTypography.bodySmall,
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.successLight,
-                            borderRadius: AppRadius.roundedXs,
-                          ),
-                          child: Text(
-                            'Demo Tier 1 Verified',
-                            style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.success,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.shield_rounded,
+                              size: 16,
+                              color: account.isRealMode ? Colors.white : AppColors.textSecondary,
                             ),
-                          ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Real Account',
+                              style: TextStyle(
+                                color: account.isRealMode ? Colors.white : AppColors.textSecondary,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // User Profile & PakTrade Unique ID Card
+            AppCard(
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: AppColors.primary,
+                        child: const Text(
+                          'AR',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  account.userName,
+                                  style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700),
+                                ),
+                                if (account.isKycVerified) ...[
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.verified_rounded, color: AppColors.success, size: 16),
+                                ],
+                              ],
+                            ),
+                            Text(
+                              userEmail,
+                              style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: account.isKycVerified ? AppColors.successLight : AppColors.warningLight,
+                                borderRadius: AppRadius.roundedXs,
+                              ),
+                              child: Text(
+                                account.isKycVerified ? 'Verified SECP Trader' : 'Demo Account (KYC Pending)',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: account.isKycVerified ? AppColors.success : AppColors.warning,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 24),
+
+                  // PakTrade Unique ID Banner
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: AppRadius.roundedSm,
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Unique PakTrade ID',
+                              style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary),
+                            ),
+                            Text(
+                              account.pakTradeId,
+                              style: AppTypography.labelLarge.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.0,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.copy_rounded, size: 20, color: AppColors.primary),
+                              tooltip: 'Copy ID',
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: account.pakTradeId));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('${account.pakTradeId} copied to clipboard!')),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.swap_horiz_rounded, size: 20, color: AppColors.primary),
+                              tooltip: 'Transfer via ID',
+                              onPressed: _openTransferModal,
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -184,9 +378,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            // Wallet & Simulation Balance Card
+            // Active Balance & Wallet Actions
             AppCard(
-              backgroundColor: AppColors.primaryLight,
+              backgroundColor: account.isRealMode ? AppColors.successLight : AppColors.primaryLight,
               child: Column(
                 children: [
                   Row(
@@ -195,29 +389,48 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Simulated Wallet Balance', style: AppTypography.bodySmall),
+                          Text(
+                            account.isRealMode ? 'Real Cash Balance' : 'Simulated Wallet Balance',
+                            style: AppTypography.bodySmall,
+                          ),
                           const SizedBox(height: 2),
                           Text(
-                            'Rs. ${currency.format(portfolio.availableCash)}',
+                            'Rs. ${currency.format(account.isRealMode ? account.realBalance : portfolio.availableCash)}',
                             style: AppTypography.financialLarge.copyWith(fontSize: 22, fontWeight: FontWeight.w800),
                           ),
                         ],
                       ),
-                      ElevatedButton(
-                        onPressed: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (context) => const DepositCashModal(),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        ),
-                        child: const Text('Add Funds'),
+                      Row(
+                        children: [
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                            label: const Text('P2P Send'),
+                            onPressed: _openTransferModal,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.add_rounded, size: 16),
+                            label: const Text('Deposit'),
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => const DepositCashModal(),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.surface,
+                              foregroundColor: AppColors.textPrimary,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -226,7 +439,70 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            // Trading & Risk Profile Section
+            // KYC Status Card
+            if (!account.isKycVerified)
+              AppCard(
+                border: Border.all(color: AppColors.warning, width: 1.5),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 24),
+                        const SizedBox(width: 8),
+                        Text(
+                          'KYC Verification Required',
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.warning,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Complete NADRA identity check and OTP verification to unlock live real-money trading and withdrawals.',
+                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 12),
+                    PrimaryButton(
+                      label: 'Start Verification',
+                      onPressed: _openKycModal,
+                    ),
+                  ],
+                ),
+              )
+            else
+              AppCard(
+                border: Border.all(color: AppColors.success, width: 1.5),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.verified_rounded, color: AppColors.success, size: 24),
+                        const SizedBox(width: 8),
+                        Text(
+                          'SECP & CDC Verified Trader',
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildVerifiedRow('CNIC', account.cnicNumber),
+                    const SizedBox(height: 4),
+                    _buildVerifiedRow('Linked Bank', account.bankName),
+                    const SizedBox(height: 4),
+                    _buildVerifiedRow('IBAN / Raast', account.accountNumber),
+                  ],
+                ),
+              ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // Trading Preferences Section
             _buildSectionHeader('Trading & Investment Preferences'),
             AppCard(
               padding: EdgeInsets.zero,
@@ -250,10 +526,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.restart_alt_rounded, color: AppColors.warning, size: 22),
+                    leading: const Icon(Icons.refresh_rounded, color: AppColors.warning, size: 22),
                     title: Text('Reset Demo Portfolio', style: AppTypography.bodyMedium),
-                    subtitle: const Text('Restore default 1M PKR cash balance', style: TextStyle(fontSize: 11)),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textSecondary),
+                    subtitle: Text('Reset virtual cash to Rs. 1,000,000', style: AppTypography.bodySmall),
+                    trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: _showResetDemoDialog,
                   ),
                 ],
@@ -261,7 +537,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            // Security Settings
+            // Security & App Settings
             _buildSectionHeader('Security & Biometrics'),
             AppCard(
               padding: EdgeInsets.zero,
@@ -269,74 +545,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   SwitchListTile(
                     secondary: const Icon(Icons.fingerprint_rounded, color: AppColors.primary, size: 22),
-                    title: Text('Biometric Quick Login', style: AppTypography.bodyMedium),
-                    subtitle: const Text('FaceID / TouchID simulated authentication', style: TextStyle(fontSize: 11)),
+                    title: Text('Biometric Login', style: AppTypography.bodyMedium),
+                    subtitle: Text('Use Fingerprint / Face ID to unlock', style: AppTypography.bodySmall),
                     value: _biometricEnabled,
-                    onChanged: (val) {
-                      setState(() => _biometricEnabled = val);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Biometrics ${val ? 'enabled' : 'disabled'}')),
-                      );
-                    },
+                    activeColor: AppColors.primary,
+                    onChanged: (val) => setState(() => _biometricEnabled = val),
                   ),
                   const Divider(height: 1),
                   SwitchListTile(
-                    secondary: const Icon(Icons.security_rounded, color: AppColors.primary, size: 22),
-                    title: Text('Two-Factor Authentication (OTP)', style: AppTypography.bodyMedium),
-                    subtitle: const Text('Require 6-digit SMS OTP on every sign-in', style: TextStyle(fontSize: 11)),
+                    secondary: const Icon(Icons.phonelink_lock_rounded, color: AppColors.primary, size: 22),
+                    title: Text('Two-Factor Authentication (2FA)', style: AppTypography.bodyMedium),
+                    subtitle: Text('Require SMS OTP on withdrawals', style: AppTypography.bodySmall),
                     value: _twoFactorEnabled,
-                    onChanged: (val) {
-                      setState(() => _twoFactorEnabled = val);
-                    },
+                    activeColor: AppColors.primary,
+                    onChanged: (val) => setState(() => _twoFactorEnabled = val),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            // Compliance & Legal
-            _buildSectionHeader('Disclosures & Legal'),
+            // Legal, Support & Sign Out
+            _buildSectionHeader('Compliance & Support'),
             AppCard(
               padding: EdgeInsets.zero,
               child: Column(
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.shield_outlined, color: AppColors.textPrimary, size: 22),
-                    title: Text('Fintech Disclosures & SECP Notice', style: AppTypography.bodyMedium),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textSecondary),
+                    leading: const Icon(Icons.shield_outlined, color: AppColors.textSecondary, size: 22),
+                    title: Text('Regulatory & Risk Notice', style: AppTypography.bodyMedium),
+                    trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: _showRegulatoryDisclosures,
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.article_outlined, color: AppColors.textPrimary, size: 22),
-                    title: Text('Terms of Service & Privacy Policy', style: AppTypography.bodyMedium),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textSecondary),
+                    leading: const Icon(Icons.headset_mic_outlined, color: AppColors.textSecondary, size: 22),
+                    title: Text('24/7 Investor Support', style: AppTypography.bodyMedium),
+                    trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Terms of Service v1.0.4 loaded')),
+                        const SnackBar(content: Text('Support line: support@paktradex.pk')),
                       );
                     },
                   ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.logout_rounded, color: AppColors.danger, size: 22),
+                    title: Text('Sign Out', style: AppTypography.bodyMedium.copyWith(color: AppColors.danger)),
+                    trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.danger),
+                    onTap: _showLogoutDialog,
+                  ),
                 ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-
-            // Logout Button
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: _showLogoutDialog,
-                icon: const Icon(Icons.logout_rounded, color: AppColors.danger, size: 18),
-                label: Text(
-                  'Log Out of PakTradeX',
-                  style: AppTypography.labelMedium.copyWith(color: AppColors.danger, fontWeight: FontWeight.w700),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.danger),
-                  shape: const RoundedRectangleBorder(borderRadius: AppRadius.roundedMd),
-                ),
               ),
             ),
             const SizedBox(height: AppSpacing.xxl),
@@ -346,14 +605,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Widget _buildVerifiedRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+        Text(value, style: AppTypography.labelSmall.copyWith(fontWeight: FontWeight.w700)),
+      ],
+    );
+  }
+
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4.0, bottom: 6.0),
+      padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           title,
-          style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary),
+          style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     );

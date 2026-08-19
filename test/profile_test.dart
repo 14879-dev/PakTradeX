@@ -25,12 +25,12 @@ void main() {
         ),
       );
 
-      expect(find.text('Account & Settings'), findsOneWidget);
-      expect(find.text('Biometric Quick Login'), findsOneWidget);
-      expect(find.text('Two-Factor Authentication (OTP)'), findsOneWidget);
-      expect(find.text('Fintech Disclosures & SECP Notice'), findsOneWidget);
+      expect(find.text('Account & Profile'), findsOneWidget);
+      expect(find.text('Biometric Login'), findsOneWidget);
+      expect(find.text('Two-Factor Authentication (2FA)'), findsOneWidget);
+      expect(find.text('Regulatory & Risk Notice'), findsOneWidget);
       expect(find.text('Reset Demo Portfolio'), findsOneWidget);
-      expect(find.text('Log Out of PakTradeX'), findsOneWidget);
+      expect(find.text('Sign Out'), findsOneWidget);
     });
   });
 }

@@ -253,9 +253,9 @@ class StockDetailScreen extends ConsumerWidget {
 
       // Sticky Buy / Sell Bottom Bar
       bottomNavigationBar: Container(
-        color: AppColors.surface,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         decoration: const BoxDecoration(
+          color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
         child: Row(

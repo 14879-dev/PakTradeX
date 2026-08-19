@@ -7,6 +7,8 @@ import '../../../app/theme/app_typography.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../markets/providers/market_provider.dart';
 import '../../portfolio/presentation/widgets/deposit_cash_modal.dart';
+import '../../portfolio/presentation/widgets/p2p_transfer_modal.dart';
+import '../../profile/providers/account_provider.dart';
 import '../../trading/providers/trading_provider.dart';
 import '../data/mock_market_data.dart';
 import '../models/market_data_models.dart';
@@ -21,6 +23,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final account = ref.watch(accountProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -70,12 +74,19 @@ class HomeScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Text(
-                  'PSX Simulation Mode',
-                  style: AppTypography.labelSmall.copyWith(
-                    fontSize: 10,
-                    color: AppColors.warning,
-                    fontWeight: FontWeight.w700,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: account.isRealMode ? AppColors.successLight : AppColors.warningLight,
+                    borderRadius: AppRadius.roundedXs,
+                  ),
+                  child: Text(
+                    account.isRealMode ? '💎 Real Account Active' : '🟢 Demo Mode (Rs. 1M)',
+                    style: AppTypography.labelSmall.copyWith(
+                      fontSize: 9,
+                      color: account.isRealMode ? AppColors.success : AppColors.warning,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ],
@@ -88,16 +99,46 @@ class HomeScreen extends ConsumerWidget {
             onPressed: () => context.go('/markets'),
             tooltip: 'Search Stocks',
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: AppColors.textPrimary),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No new notifications')),
-              );
-            },
-            tooltip: 'Notifications',
+          // Profile Avatar Action Button with KYC badge
+          Padding(
+            padding: const EdgeInsets.only(right: 12, left: 4),
+            child: GestureDetector(
+              onTap: () => context.push('/profile'),
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.primaryLight,
+                    child: Text(
+                      'AR',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  if (account.isKycVerified)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(1.5),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.verified_rounded,
+                          color: AppColors.success,
+                          size: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(width: 4),
         ],
       ),
       body: RefreshIndicator(
@@ -119,14 +160,16 @@ class HomeScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Assalam-o-Alaikum, Trader 👋',
+                        'Assalam-o-Alaikum, ${account.userName.split(" ").first} 👋',
                         style: AppTypography.titleSmall.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       Text(
-                        'Pakistan Stock Exchange is currently active',
-                        style: AppTypography.bodySmall,
+                        'ID: ${account.pakTradeId} • Pakistan Stock Exchange',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -138,10 +181,11 @@ class HomeScreen extends ConsumerWidget {
               Builder(
                 builder: (context) {
                   final trading = ref.watch(tradingProvider);
+                  final displayCash = account.isRealMode ? account.realBalance : trading.availableCash;
                   final dynamicSummary = PortfolioSummary(
-                    totalBalance: trading.totalPortfolioValue,
+                    totalBalance: account.isRealMode ? displayCash + trading.totalInvested : trading.totalPortfolioValue,
                     investedAmount: trading.totalInvested,
-                    cashBalance: trading.availableCash,
+                    cashBalance: displayCash,
                     todaysPnl: trading.totalUnrealizedPnl,
                     todaysPnlPercent: trading.totalPnlPercent,
                     totalPnl: trading.totalUnrealizedPnl,
@@ -164,35 +208,42 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
 
-              // Quick Action Chips
+              // Quick Action Chips (Markets, Trade Terminal, Send P2P, Portfolio)
               Row(
                 children: [
                   _buildQuickAction(
                     context,
-                    icon: Icons.explore_outlined,
+                    icon: Icons.candlestick_chart_rounded,
+                    label: 'Trade',
+                    onTap: () => context.go('/trade'),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  _buildQuickAction(
+                    context,
+                    icon: Icons.swap_horiz_rounded,
+                    label: 'Transfer',
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const P2pTransferModal(),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  _buildQuickAction(
+                    context,
+                    icon: Icons.show_chart_rounded,
                     label: 'Markets',
                     onTap: () => context.go('/markets'),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   _buildQuickAction(
                     context,
-                    icon: Icons.auto_awesome_outlined,
-                    label: 'AI Copilot',
-                    onTap: () => context.go('/ai'),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.pie_chart_outline_rounded,
-                    label: 'Portfolio',
+                    icon: Icons.account_balance_wallet_rounded,
+                    label: 'Assets',
                     onTap: () => context.go('/portfolio'),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.person_outline_rounded,
-                    label: 'Profile',
-                    onTap: () => context.go('/profile'),
                   ),
                 ],
               ),
@@ -239,10 +290,11 @@ class HomeScreen extends ConsumerWidget {
                     borderRadius: AppRadius.roundedSm,
                   ),
                   child: Text(
-                    'Updated 10m ago',
+                    'Live Gemini AI',
                     style: AppTypography.labelSmall.copyWith(
                       color: AppColors.aiAccent,
                       fontSize: 10,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -250,7 +302,7 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.sm),
               AiMarketBriefCard(
                 brief: MockMarketData.dailyAiBrief,
-                onAskCopilotTap: () => context.go('/ai'),
+                onAskCopilotTap: () => context.push('/ai'),
               ),
               const SizedBox(height: AppSpacing.xl),
 
@@ -283,7 +335,7 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.xl),
 
-              // Compliance & Regulatory Notice Footer
+              // Compliance & Safety Notice
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -300,7 +352,7 @@ class HomeScreen extends ConsumerWidget {
                         const Icon(Icons.shield_outlined, size: 14, color: AppColors.textSecondary),
                         const SizedBox(width: 4),
                         Text(
-                          'PakTradeX Simulation & Safety Notice',
+                          'PakTradeX SECP & PSX Compliance Notice',
                           style: AppTypography.labelSmall.copyWith(
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w700,
@@ -310,7 +362,7 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'This environment runs in sandbox simulation mode. PakTradeX is a modern investment platform connecting users to authorized brokerage channels. No real-money trades are executed in demo mode.',
+                      'Real mode orders are routed via SECP-licensed CDC brokers. Demo mode orders are executed with virtual funds for educational simulation.',
                       textAlign: TextAlign.center,
                       style: AppTypography.bodySmall.copyWith(
                         fontSize: 10,
@@ -369,5 +421,4 @@ class HomeScreen extends ConsumerWidget {
   void _showStockBottomSheet(BuildContext context, dynamic stock) {
     context.go('/home/stock/${stock.symbol}', extra: stock);
   }
-
 }
