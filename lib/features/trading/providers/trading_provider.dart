@@ -218,6 +218,15 @@ class TradingNotifier extends StateNotifier<TradingPortfolioState> {
     );
     return null;
   }
+
+  /// Resets demo balance to 1M PKR and clears orders
+  void resetDemo() {
+    state = const TradingPortfolioState(
+      availableCash: 1000000.0,
+      holdings: [],
+      orders: [],
+    );
+  }
 }
 
 final tradingProvider = StateNotifierProvider<TradingNotifier, TradingPortfolioState>((ref) {
