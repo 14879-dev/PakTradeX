@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_typography.dart';
@@ -175,88 +176,6 @@ class _MarketsScreenState extends State<MarketsScreen> {
   }
 
   void _showStockDetails(BuildContext context, StockQuote stock) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(stock.symbol, style: AppTypography.displayMedium),
-                    Text(stock.name, style: AppTypography.bodyMedium),
-                  ],
-                ),
-                PriceChangeBadge(changePercent: stock.changePercent),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text('Financial Snapshot', style: AppTypography.titleSmall),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildMetric('Price', 'Rs. ${stock.price.toStringAsFixed(2)}'),
-                _buildMetric('P/E Ratio', '${stock.peRatio}x'),
-                _buildMetric('Div. Yield', '${stock.dividendYield}%'),
-                _buildMetric('Mkt Cap', '${stock.marketCap}B'),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Simulated BUY order for ${stock.symbol}')),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-                    child: const Text('Buy Stock'),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Simulated SELL order for ${stock.symbol}')),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
-                    child: const Text('Sell Stock'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMetric(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTypography.bodySmall),
-        const SizedBox(height: 2),
-        Text(value, style: AppTypography.labelLarge),
-      ],
-    );
+    context.go('/markets/stock/${stock.symbol}', extra: stock);
   }
 }

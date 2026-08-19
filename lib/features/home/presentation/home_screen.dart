@@ -345,77 +345,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _showStockBottomSheet(BuildContext context, dynamic stock) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      stock.symbol,
-                      style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    Text(stock.name, style: AppTypography.bodySmall),
-                  ],
-                ),
-                Text(
-                  'Rs. ${stock.price.toStringAsFixed(2)}',
-                  style: AppTypography.financialLarge.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Simulated BUY order for ${stock.symbol} initiated')),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.success,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Buy Stock'),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Simulated SELL order for ${stock.symbol} initiated')),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.danger,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Sell Stock'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-        ),
-      ),
-    );
+    context.go('/home/stock/${stock.symbol}', extra: stock);
   }
+
 }

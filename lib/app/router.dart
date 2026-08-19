@@ -7,11 +7,13 @@ import '../features/auth/presentation/onboarding_screen.dart';
 import '../features/auth/presentation/otp_verification_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
+import '../features/home/models/market_data_models.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/markets/presentation/markets_screen.dart';
 import '../features/portfolio/presentation/portfolio_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/shell/presentation/main_shell_screen.dart';
+import '../features/stock_details/presentation/stock_detail_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _homeNavigatorKey = GlobalKey<NavigatorState>();
@@ -56,27 +58,44 @@ final GoRouter appRouter = GoRouter(
         return MainShellScreen(navigationShell: navigationShell);
       },
       branches: [
-        // Tab 1: Home
         StatefulShellBranch(
           navigatorKey: _homeNavigatorKey,
           routes: [
             GoRoute(
               path: '/home',
               builder: (context, state) => const HomeScreen(),
+              routes: [
+                GoRoute(
+                  path: 'stock/:symbol',
+                  parentNavigatorKey: _rootNavigatorKey,
+                  builder: (context, state) {
+                    final stock = state.extra as StockQuote;
+                    return StockDetailScreen(stock: stock);
+                  },
+                ),
+              ],
             ),
           ],
         ),
-        // Tab 2: Markets
         StatefulShellBranch(
           navigatorKey: _marketsNavigatorKey,
           routes: [
             GoRoute(
               path: '/markets',
               builder: (context, state) => const MarketsScreen(),
+              routes: [
+                GoRoute(
+                  path: 'stock/:symbol',
+                  parentNavigatorKey: _rootNavigatorKey,
+                  builder: (context, state) {
+                    final stock = state.extra as StockQuote;
+                    return StockDetailScreen(stock: stock);
+                  },
+                ),
+              ],
             ),
           ],
         ),
-        // Tab 3: Portfolio
         StatefulShellBranch(
           navigatorKey: _portfolioNavigatorKey,
           routes: [
@@ -86,7 +105,6 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
-        // Tab 4: AI Copilot
         StatefulShellBranch(
           navigatorKey: _aiNavigatorKey,
           routes: [
@@ -96,7 +114,6 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
-        // Tab 5: Profile
         StatefulShellBranch(
           navigatorKey: _profileNavigatorKey,
           routes: [
