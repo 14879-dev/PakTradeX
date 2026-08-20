@@ -48,20 +48,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             children: [
               // Logo
               Container(
-                width: 48,
-                height: 48,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
                   borderRadius: AppRadius.roundedMd,
-                ),
-                child: const Center(
-                  child: Text(
-                    'PX',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 20,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: AppRadius.roundedMd,
+                  child: Image.asset(
+                    'assets/icons/app_icon.png',
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),

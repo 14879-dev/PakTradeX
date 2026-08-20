@@ -42,28 +42,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 72,
-              height: 72,
+              width: 84,
+              height: 84,
               decoration: BoxDecoration(
-                color: AppColors.primary,
                 borderRadius: AppRadius.roundedLg,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.35),
-                    blurRadius: 20,
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 24,
                     offset: const Offset(0, 8),
                   ),
                 ],
               ),
-              child: const Center(
-                child: Text(
-                  'PX',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 32,
-                    letterSpacing: -1,
-                  ),
+              child: ClipRRect(
+                borderRadius: AppRadius.roundedLg,
+                child: Image.asset(
+                  'assets/icons/app_icon.png',
+                  fit: BoxFit.contain,
                 ),
               ),
             ),

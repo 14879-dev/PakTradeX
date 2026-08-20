@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:paktradex/app/app.dart';
@@ -10,8 +11,9 @@ void main() {
       ),
     );
 
-    // Initial render shows Splash screen with PX logo
-    expect(find.text('PX'), findsOneWidget);
+    // Initial render shows Splash screen with app logo image and progress indicator
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     // Advance splash delay
     await tester.pump(const Duration(milliseconds: 1500));
