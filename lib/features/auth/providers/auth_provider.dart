@@ -76,14 +76,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // ── Verify OTP ───────────────────────────────────────────────────
 
   Future<bool> verifyOtp(String code) async {
-    state = AuthState.authenticating();
-
+    // Capture email BEFORE wiping state with authenticating()
     final email = state.pendingEmailOrPhone ?? '';
+
     if (code.length != 6) {
       state = AuthState.unauthenticated('Invalid OTP code. Please enter 6 digits.');
       return false;
     }
 
+    if (email.isEmpty) {
+      state = AuthState.unauthenticated('Session expired. Please login again.');
+      return false;
+    }
+
+    state = AuthState.authenticating();
     final result = await _svc.verifyOtp(email: email, code: code);
 
     if (result.error != null || result.user == null) {
