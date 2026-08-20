@@ -23,6 +23,10 @@ class TokenResponse(BaseModel):
     user_id: str
     email: str
     full_name: str
+    pak_trade_id: Optional[str] = None
+    demo_balance: float = 1_000_000.0
+    real_balance: float = 0.0
+    kyc_status: str = "none"
 
 # --- Market Schemas ---
 class StockQuoteSchema(BaseModel):

@@ -14,22 +14,47 @@ import pandas as pd
 # PSX ticker map: display symbol → Yahoo Finance symbol
 # -----------------------------------------------------------------
 PSX_TICKER_MAP = {
+    # Commercial Banks
     "MCB":    "MCB.KA",
-    "ENGRO":  "ENGRO.KA",
-    "OGDC":   "OGDC.KA",
-    "SYS":    "SYS.KA",
     "HBL":    "HBL.KA",
-    "LUCK":   "LUCK.KA",
-    "PSO":    "PSO.KA",
-    "PPL":    "PPL.KA",
-    "FFC":    "FFC.KA",
-    "MARI":   "MARI.KA",
     "UBL":    "UBL.KA",
-    "BAHL":   "BAHL.KA",
     "MEBL":   "MEBL.KA",
+    "BAFL":   "BAFL.KA",
+    "BAHL":   "BAHL.KA",
+    # Technology
+    "SYS":    "SYS.KA",
+    "TRG":    "TRG.KA",
+    "NETSOL": "NETSOL.KA",
+    # Fertilizer
+    "ENGRO":  "ENGRO.KA",
+    "FFC":    "FFC.KA",
+    "EFERT":  "EFERT.KA",
+    # Oil & Gas
+    "OGDC":   "OGDC.KA",
+    "PPL":    "PPL.KA",
+    "PSO":    "PSO.KA",
+    "MARI":   "MARI.KA",
     "ATRL":   "ATRL.KA",
+    # Cement
+    "LUCK":   "LUCK.KA",
+    "DGKC":   "DGKC.KA",
+    "MLCF":   "MLCF.KA",
+    # Power
     "HUBC":   "HUBC.KA",
-    "^KSE100": "^KSE100",  # KSE-100 Index
+    "KAPCO":  "KAPCO.KA",
+    # Automobiles
+    "INDU":   "INDU.KA",
+    "HCAR":   "HCAR.KA",
+    "PSMC":   "PSMC.KA",
+    # Pharma
+    "SEARL":  "SEARL.KA",
+    "FEROZ":  "FEROZ.KA",
+    # Textile
+    "NML":    "NML.KA",
+    # Insurance
+    "JLICL":  "JLICL.KA",
+    # Indices
+    "^KSE100": "^KSE100",
     "^KSE30":  "^KSE30",
 }
 

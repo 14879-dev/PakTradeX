@@ -134,6 +134,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   if (!context.mounted) return;
                   setState(() => _isLoading = false);
 
+                  final authState = ref.read(authProvider);
+                  if (authState.errorMessage != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(authState.errorMessage!),
+                        backgroundColor: AppColors.danger,
+                      ),
+                    );
+                    return;
+                  }
+
                   context.push('/otp?target=${Uri.encodeComponent(_emailController.text.trim())}');
                 },
               ),

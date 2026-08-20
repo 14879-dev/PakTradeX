@@ -12,6 +12,24 @@ class Base(DeclarativeBase):
     pass
 
 
+class User(Base):
+    """Registered PakTradeX user with JWT auth."""
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True)           # UUID
+    full_name = Column(String(100), nullable=False)
+    email = Column(String(200), unique=True, nullable=False, index=True)
+    phone_number = Column(String(20), nullable=True)
+    hashed_password = Column(String, nullable=False)
+    pak_trade_id = Column(String(20), unique=True, nullable=False)  # PTX-XXXXXX
+    is_verified = Column(Integer, default=0)        # 0=unverified, 1=verified
+    kyc_status = Column(String(20), default="none") # none|pending|verified
+    demo_balance = Column(Float, default=1_000_000.0)
+    real_balance = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class OrderSide(str, enum.Enum):
     buy = "buy"
     sell = "sell"
