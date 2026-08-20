@@ -12,7 +12,7 @@ abstract class AppConfig {
   // For device testing on same Wi-Fi: use http://192.168.x.x:8000/api/v1
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://robots-occurrence-ooo-strict.trycloudflare.com/api/v1',
+    defaultValue: 'https://paktradex-live.loca.lt/api/v1',
   );
 
   // Fallback to mock data when backend is unreachable

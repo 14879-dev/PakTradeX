@@ -29,6 +29,9 @@ class ApiClient {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
+          'bypass-tunnel-reminder': 'true',
+          'Bypass-Tunnel-Reminder': 'true',
+          'User-Agent': 'PakTradeXApp/1.0',
         },
       ),
     );
