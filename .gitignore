@@ -48,3 +48,10 @@ app.*.map.json
 backend/.env
 .env
 *.env
+
+# SQLite & Python
+*.db
+backend/paktradex.db
+__pycache__/
+*.pyc
+
