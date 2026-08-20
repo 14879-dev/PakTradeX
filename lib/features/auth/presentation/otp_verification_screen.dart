@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_typography.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../providers/auth_provider.dart';
 
@@ -94,104 +93,51 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.xxl),
 
-              // Demo / Dev Helper Card
-              Consumer(
-                builder: (context, ref, child) {
-                  final devOtp = ref.watch(authProvider).pendingDevOtp;
-                  final displayCode = devOtp ?? '123456';
-                  return Column(
-                    children: [
-                      AppCard(
-                        backgroundColor: AppColors.primaryLight,
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.info_outline_rounded, size: 18, color: AppColors.primary),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(
-                              child: Text(
-                                devOtp != null
-                                    ? 'Security Code Sent: Enter $devOtp to complete verification.'
-                                    : 'Demo Mode: Enter 123456 or tap autofill to verify immediately.',
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: AppColors.primaryDark,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+              // 6 PIN Input boxes
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(6, (index) {
+                  return SizedBox(
+                    width: 46,
+                    height: 54,
+                    child: TextField(
+                      controller: _controllers[index],
+                      focusNode: _focusNodes[index],
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      maxLength: 1,
+                      style: AppTypography.financialLarge.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                      decoration: InputDecoration(
+                        counterText: '',
+                        contentPadding: EdgeInsets.zero,
+                        filled: true,
+                        fillColor: AppColors.background,
+                        border: OutlineInputBorder(
+                          borderRadius: AppRadius.roundedMd,
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: AppRadius.roundedMd,
+                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xl),
-
-                      // 6 PIN Input boxes
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List.generate(6, (index) {
-                          return SizedBox(
-                            width: 46,
-                            height: 54,
-                            child: TextField(
-                              controller: _controllers[index],
-                              focusNode: _focusNodes[index],
-                              keyboardType: TextInputType.number,
-                              textAlign: TextAlign.center,
-                              maxLength: 1,
-                              style: AppTypography.financialLarge.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
-                              ),
-                              decoration: InputDecoration(
-                                counterText: '',
-                                contentPadding: EdgeInsets.zero,
-                                filled: true,
-                                fillColor: AppColors.background,
-                                border: OutlineInputBorder(
-                                  borderRadius: AppRadius.roundedMd,
-                                  borderSide: const BorderSide(color: AppColors.border),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: AppRadius.roundedMd,
-                                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                                ),
-                              ),
-                              onChanged: (value) {
-                                if (value.isNotEmpty && index < 5) {
-                                  _focusNodes[index + 1].requestFocus();
-                                } else if (value.isEmpty && index > 0) {
-                                  _focusNodes[index - 1].requestFocus();
-                                }
-                              },
-                            ),
-                          );
-                        }),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-
-                      // Autofill shortcut
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () {
-                            for (int i = 0; i < 6 && i < displayCode.length; i++) {
-                              _controllers[i].text = displayCode[i];
-                            }
-                          },
-                          icon: const Icon(Icons.flash_on_rounded, size: 14, color: AppColors.primary),
-                          label: Text(
-                            'Autofill Code ($displayCode)',
-                            style: AppTypography.labelSmall.copyWith(color: AppColors.primary),
-                          ),
-                        ),
-                      ),
-                    ],
+                      onChanged: (value) {
+                        if (value.isNotEmpty && index < 5) {
+                          _focusNodes[index + 1].requestFocus();
+                        } else if (value.isEmpty && index > 0) {
+                          _focusNodes[index - 1].requestFocus();
+                        }
+                      },
+                    ),
                   );
-                },
+                }),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.xxl),
 
               // Verify Button
               PrimaryButton(
@@ -207,8 +153,12 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                     if (success) {
                       context.go('/home');
                     } else {
+                      final errorMsg = ref.read(authProvider).errorMessage ?? 'Invalid verification code. Please check and try again.';
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Invalid code. Try entering 123456')),
+                        SnackBar(
+                          content: Text(errorMsg),
+                          backgroundColor: AppColors.danger,
+                        ),
                       );
                     }
                   } else {
@@ -230,7 +180,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                     : TextButton(
                         onPressed: _startTimer,
                         child: Text(
-                          'Resend Code via SMS / Email',
+                          'Resend Code via Email',
                           style: AppTypography.labelMedium.copyWith(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w700,

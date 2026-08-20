@@ -2,6 +2,7 @@
 Real JWT Authentication Endpoints for PakTradeX.
 Stores users in SQLite (dev) / PostgreSQL (prod) with bcrypt passwords.
 Issues HS256 JWT tokens valid for 7 days.
+Dispatches authentic 6-digit OTP verification codes to user emails via SMTP.
 """
 import uuid
 import random
@@ -14,10 +15,11 @@ from ....core.database import get_db
 from ....core.security import hash_password, verify_password, create_access_token, decode_token
 from ....models.db_models import User, Base
 from ....schemas.api_schemas import UserRegister, UserLogin, OtpVerify, TokenResponse
+from ....services.email_service import send_otp_email
 
 router = APIRouter()
 
-# In-memory OTP store: {email: otp_code}  (use Redis in production)
+# In-memory OTP store: {email: otp_code}
 _pending_otps: dict[str, str] = {}
 
 
@@ -27,6 +29,7 @@ def _gen_pak_trade_id() -> str:
 
 
 def _gen_otp() -> str:
+    """Generate 6-digit random verification code."""
     return str(random.randint(100000, 999999))
 
 
@@ -41,12 +44,15 @@ async def register_user(payload: UserRegister, db: AsyncSession = Depends(get_db
             detail="An account with this email already exists."
         )
 
-    # Generate & store OTP (simulated SMS send)
+    # Generate & store OTP
     otp = _gen_otp()
     _pending_otps[payload.email] = otp
-    print(f"[AUTH] OTP for {payload.email}: {otp}")  # In prod: send via Twilio/Jazz
+    print(f"\n[AUTH EMAIL DISPATCH] Sending OTP {otp} to {payload.email}...")
 
-    # Create user (unverified) — store in DB immediately
+    # Send real email
+    send_otp_email(to_email=payload.email, otp_code=otp, user_name=payload.fullName)
+
+    # Create user (unverified)
     user = User(
         id=str(uuid.uuid4()),
         full_name=payload.fullName,
@@ -64,10 +70,8 @@ async def register_user(payload: UserRegister, db: AsyncSession = Depends(get_db
 
     return {
         "status": "otp_sent",
-        "message": f"6-digit verification code sent to {payload.email}",
+        "message": f"6-digit authentication code sent to {payload.email}",
         "email": payload.email,
-        # Return OTP in dev mode so the app can auto-fill it
-        "dev_otp": otp,
     }
 
 
@@ -86,13 +90,37 @@ async def login_user(payload: UserLogin, db: AsyncSession = Depends(get_db)):
     # Generate OTP for 2FA
     otp = _gen_otp()
     _pending_otps[payload.email] = otp
-    print(f"[AUTH] Login OTP for {payload.email}: {otp}")
+    print(f"\n[AUTH EMAIL DISPATCH] Sending Login 2FA OTP {otp} to {payload.email}...")
+
+    # Send real email
+    send_otp_email(to_email=payload.email, otp_code=otp, user_name=user.full_name)
 
     return {
         "status": "otp_pending",
-        "message": "Please enter the 6-digit OTP sent to your registered device.",
+        "message": f"Please enter the 6-digit code sent to {payload.email}",
         "email": payload.email,
-        "dev_otp": otp,
+    }
+
+
+# ── Resend OTP ────────────────────────────────────────────────────────
+@router.post("/resend-otp")
+async def resend_otp(payload: dict, db: AsyncSession = Depends(get_db)):
+    email = payload.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required.")
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    user_name = user.full_name if user else "Investor"
+
+    otp = _gen_otp()
+    _pending_otps[email] = otp
+    print(f"\n[AUTH EMAIL DISPATCH] Resending OTP {otp} to {email}...")
+    send_otp_email(to_email=email, otp_code=otp, user_name=user_name)
+
+    return {
+        "status": "otp_sent",
+        "message": f"New verification code sent to {email}",
     }
 
 
@@ -104,7 +132,7 @@ async def verify_otp(payload: OtpVerify, db: AsyncSession = Depends(get_db)):
     if not stored_otp or payload.code != stored_otp:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired OTP. Please request a new code."
+            detail="Invalid or expired verification code. Please check your email or request a new code."
         )
 
     # Mark user as verified
@@ -138,19 +166,19 @@ async def verify_otp(payload: OtpVerify, db: AsyncSession = Depends(get_db)):
 @router.get("/me")
 async def get_me(
     authorization: str = Header(...),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header.")
+        raise HTTPException(status_code=401, detail="Invalid token format.")
 
-    token = authorization.split(" ", 1)[1]
+    token = authorization.split(" ")[1]
     payload = decode_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Token is invalid or expired.")
+    if not payload or "sub" not in payload:
+        raise HTTPException(status_code=401, detail="Token expired or invalid.")
 
-    user_id = payload.get("sub")
+    user_id = payload["sub"]
     result = await db.execute(select(User).where(User.id == user_id))
-    user: Optional[User] = result.scalar_one_or_none()
+    user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
@@ -164,23 +192,25 @@ async def get_me(
         "kyc_status": user.kyc_status,
         "demo_balance": user.demo_balance,
         "real_balance": user.real_balance,
-        "created_at": user.created_at.isoformat(),
     }
 
 
-# ── Forgot Password (request reset OTP) ──────────────────────────────
+# ── Forgot Password ───────────────────────────────────────────────────
 @router.post("/forgot-password")
-async def forgot_password(email: str, db: AsyncSession = Depends(get_db)):
+async def forgot_password(payload: dict, db: AsyncSession = Depends(get_db)):
+    email = payload.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required.")
+
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
-    # Always return success to prevent email enumeration
-    if user:
-        otp = _gen_otp()
-        _pending_otps[f"reset:{email}"] = otp
-        print(f"[AUTH] Password reset OTP for {email}: {otp}")
+    if not user:
+        # Don't leak whether email exists
+        return {"status": "ok", "message": "If an account exists, a reset code was sent."}
 
-    return {
-        "status": "reset_sent",
-        "message": "If this email is registered, a reset code has been sent.",
-        "dev_otp": _pending_otps.get(f"reset:{email}", "N/A"),
-    }
+    otp = _gen_otp()
+    _pending_otps[email] = otp
+    print(f"\n[AUTH EMAIL DISPATCH] Password Reset OTP {otp} for {email}...")
+    send_otp_email(to_email=email, otp_code=otp, user_name=user.full_name)
+
+    return {"status": "ok", "message": f"Password reset code sent to {email}"}
