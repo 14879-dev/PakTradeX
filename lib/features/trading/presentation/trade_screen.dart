@@ -3,16 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../app/theme/app_colors.dart';
-import '../../../app/theme/app_spacing.dart';
-import '../../../app/theme/app_typography.dart';
-import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/price_change_badge.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../home/data/mock_market_data.dart';
 import '../../home/models/market_data_models.dart';
-import '../../markets/providers/market_provider.dart';
-import '../../profile/providers/account_provider.dart';
+import '../../portfolio/presentation/widgets/deposit_cash_modal.dart';
 import '../../stock_details/presentation/widgets/interactive_stock_chart.dart';
-import '../../stock_details/presentation/widgets/order_book_widget.dart';
 import '../models/trading_models.dart';
 import '../providers/trading_provider.dart';
 
@@ -23,53 +17,184 @@ class TradeScreen extends ConsumerStatefulWidget {
   ConsumerState<TradeScreen> createState() => _TradeScreenState();
 }
 
-class _TradeScreenState extends ConsumerState<TradeScreen> with SingleTickerProviderStateMixin {
-  String _selectedSymbol = 'OGDC';
+class _TradeScreenState extends ConsumerState<TradeScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _subTabController;
+  String _selectedSymbol = 'MCB';
   OrderSide _orderSide = OrderSide.buy;
   OrderType _orderType = OrderType.market;
+  bool _isTotalMode = true; // Total (PKR) or Amount (Shares)
 
-  final _quantityController = TextEditingController(text: '100');
-  final _limitPriceController = TextEditingController();
+  final _amountController = TextEditingController(text: '10000');
+  final _limitPriceController = TextEditingController(text: '322.40');
 
+  double _sliderPercent = 0.25; // 0, 0.25, 0.50, 0.75, 1.0
   bool _isExecuting = false;
+  bool _showPromoBanner = true;
+  bool _showBottomChart = false;
+  int _orderManagementTab = 0; // 0: Open Orders, 1: Positions, 2: Strategies
 
-  final List<String> _popularTickers = [
-    'OGDC',
-    'LUCK',
-    'HUBC',
-    'ENGRO',
-    'SYS',
-    'HBL',
-    'PSO',
-    'MCB',
-    'FFC',
-    'TRG',
+  final List<String> _subTabs = [
+    'RealStocks',
+    'Spot',
+    'Futures',
+    'Predictions',
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _subTabController = TabController(length: _subTabs.length, vsync: this, initialIndex: 1);
+  }
+
+  @override
   void dispose() {
-    _quantityController.dispose();
+    _subTabController.dispose();
+    _amountController.dispose();
     _limitPriceController.dispose();
     super.dispose();
   }
 
-  Future<void> _executeTrade(StockQuote stock, double currentPrice) async {
-    final qty = int.tryParse(_quantityController.text) ?? 0;
-    if (qty <= 0) {
+  StockQuote get _currentStock {
+    return MockMarketData.allPsxStocks.firstWhere(
+      (s) => s.symbol == _selectedSymbol,
+      orElse: () => MockMarketData.allPsxStocks.first,
+    );
+  }
+
+  void _openStockPickerModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Select PSX Stock',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: MockMarketData.allPsxStocks.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final stock = MockMarketData.allPsxStocks[index];
+                    final isSelected = stock.symbol == _selectedSymbol;
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      title: Text(
+                        '${stock.symbol}/PKR',
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                          color: isSelected ? AppColors.primary : const Color(0xFF1A202C),
+                        ),
+                      ),
+                      subtitle: Text(
+                        stock.name,
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF718096)),
+                      ),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Rs. ${stock.price.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${stock.changePercent >= 0 ? "+" : ""}${stock.changePercent.toStringAsFixed(2)}%',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: stock.changePercent >= 0 ? const Color(0xFF38A169) : const Color(0xFFE53E3E),
+                            ),
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _selectedSymbol = stock.symbol;
+                          _limitPriceController.text = stock.price.toStringAsFixed(2);
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _onSliderChanged(double val, double maxBudget) {
+    setState(() {
+      _sliderPercent = val;
+      final allocated = maxBudget * val;
+      if (_isTotalMode) {
+        _amountController.text = allocated.toStringAsFixed(0);
+      } else {
+        final shares = (allocated / _currentStock.price).floor();
+        _amountController.text = shares.toString();
+      }
+    });
+  }
+
+  Future<void> _handleExecuteTrade() async {
+    final stock = _currentStock;
+    final numVal = double.tryParse(_amountController.text) ?? 0;
+    if (numVal <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Quantity must be greater than 0')),
+        const SnackBar(content: Text('Please enter a valid amount or shares quantity')),
       );
       return;
     }
 
+    final int quantity = _isTotalMode
+        ? (numVal / stock.price).floor().clamp(1, 999999)
+        : numVal.toInt();
+
     final price = _orderType == OrderType.limit
-        ? (double.tryParse(_limitPriceController.text) ?? currentPrice)
-        : currentPrice;
+        ? (double.tryParse(_limitPriceController.text) ?? stock.price)
+        : stock.price;
 
     setState(() => _isExecuting = true);
     HapticFeedback.mediumImpact();
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 600));
 
     final notifier = ref.read(tradingProvider.notifier);
     String? orderId;
@@ -79,14 +204,14 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with SingleTickerProv
         symbol: stock.symbol,
         stockName: stock.name,
         sector: stock.sector,
-        quantity: qty,
+        quantity: quantity,
         price: price,
         orderType: _orderType,
       );
     } else {
       orderId = await notifier.placeSellOrder(
         symbol: stock.symbol,
-        quantity: qty,
+        quantity: quantity,
         price: price,
         orderType: _orderType,
       );
@@ -97,17 +222,10 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with SingleTickerProv
       if (orderId != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+            backgroundColor: _orderSide == OrderSide.buy ? const Color(0xFF38A169) : const Color(0xFFE53E3E),
             content: Text(
-              '${_orderSide == OrderSide.buy ? "Bought" : "Sold"} $qty shares of ${stock.symbol} @ Rs. ${price.toStringAsFixed(2)}',
+              '${_orderSide == OrderSide.buy ? "Buy" : "Sell"} Order Executed: $quantity shares of ${stock.symbol} at Rs. ${price.toStringAsFixed(2)}',
             ),
-            backgroundColor: _orderSide == OrderSide.buy ? AppColors.success : AppColors.danger,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Order failed: Insufficient funds or shares available'),
-            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -117,471 +235,68 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat('#,##0.00', 'en_US');
-    final marketState = ref.watch(marketProvider);
+    final stock = _currentStock;
     final portfolio = ref.watch(tradingProvider);
-    final account = ref.watch(accountProvider);
-
-    // Find current stock from market data or use fallback
-    StockQuote? stock;
-    for (var g in marketState.overview.topGainers) {
-      if (g.symbol == _selectedSymbol) {
-        stock = StockQuote(
-          symbol: g.symbol,
-          name: g.name,
-          sector: 'Commercial/Industrial',
-          price: g.price,
-          change: g.change,
-          changePercent: g.changePercent,
-          volume: 1200000,
-          marketCap: 45.0,
-          peRatio: 6.2,
-          dividendYield: 7.5,
-          sparkline: [g.price * 0.98, g.price * 0.99, g.price],
-        );
-      }
-    }
-    for (var l in marketState.overview.topLosers) {
-      if (l.symbol == _selectedSymbol) {
-        stock = StockQuote(
-          symbol: l.symbol,
-          name: l.name,
-          sector: 'Commercial/Industrial',
-          price: l.price,
-          change: l.change,
-          changePercent: l.changePercent,
-          volume: 850000,
-          marketCap: 32.0,
-          peRatio: 5.8,
-          dividendYield: 6.1,
-          sparkline: [l.price * 1.02, l.price * 1.01, l.price],
-        );
-      }
-    }
-
-    stock ??= StockQuote(
-      symbol: _selectedSymbol,
-      name: '$_selectedSymbol Limited',
-      sector: 'Commercial/Industrial',
-      price: _selectedSymbol == 'OGDC'
-          ? 154.20
-          : _selectedSymbol == 'LUCK'
-              ? 840.50
-              : _selectedSymbol == 'HUBC'
-                  ? 128.40
-                  : 250.00,
-      change: 4.80,
-      changePercent: 3.21,
-      volume: 1250000,
-      marketCap: 45.0,
-      peRatio: 5.4,
-      dividendYield: 8.2,
-      sparkline: [150.0, 152.0, 151.0, 153.0, 154.2],
-    );
-
-    final currentPrice = stock.price;
-    final qty = int.tryParse(_quantityController.text) ?? 100;
-    final double targetPrice = _orderType == OrderType.limit
-        ? (double.tryParse(_limitPriceController.text) ?? currentPrice)
-        : currentPrice;
-    final estimatedTotal = qty * targetPrice;
-    final brokerageFee = (estimatedTotal * 0.0015).clamp(25.0, double.infinity);
-    final grandTotal = _orderSide == OrderSide.buy
-        ? estimatedTotal + brokerageFee
-        : estimatedTotal - brokerageFee;
+    final isBuy = _orderSide == OrderSide.buy;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: AppRadius.roundedSm,
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.candlestick_chart_rounded,
-                      color: AppColors.primary, size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Trade Terminal',
-                    style: AppTypography.titleSmall.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: account.isRealMode ? AppColors.successLight : AppColors.warningLight,
-                borderRadius: AppRadius.roundedXs,
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    account.isRealMode ? Icons.shield_rounded : Icons.code_rounded,
-                    color: account.isRealMode ? AppColors.success : AppColors.warning,
-                    size: 14,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    account.isRealMode ? 'Real Mode' : 'Demo Mode',
-                    style: AppTypography.labelSmall.copyWith(
-                      color: account.isRealMode ? AppColors.success : AppColors.warning,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      backgroundColor: Colors.white,
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ticker Selector Horizontal List
-            SizedBox(
-              height: 38,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _popularTickers.length,
-                separatorBuilder: (c, i) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final sym = _popularTickers[index];
-                  final isSelected = sym == _selectedSymbol;
-                  return ChoiceChip(
-                    label: Text(sym, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    selected: isSelected,
-                    selectedColor: AppColors.primary,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : AppColors.textPrimary,
-                    ),
-                    onSelected: (val) {
-                      if (val) {
-                        setState(() {
-                          _selectedSymbol = sym;
-                          _limitPriceController.clear();
-                        });
-                      }
-                    },
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
+            // 1. Top Sub-Navigation Tabs Bar (RealStocks [NEW], Spot, Futures, Predictions)
+            _buildTopSubTabsBar(),
 
-            // Stock Header Card with Live Chart
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
+            // 2. Asset Header (LINK/USDT ▼, Price, 300X, Chart, Menu)
+            _buildAssetHeader(stock),
+
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+            // 3. Scrollable Trade Grid & Order Management
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // Main 2-Column Split (Left: Trade Inputs / Right: Live Order Book)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            stock.symbol,
-                            style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w800),
+                          // Left Column: Buy/Sell, Order Type, Price, Amount, Slider, Buy Button
+                          Expanded(
+                            flex: 56,
+                            child: _buildLeftTradingControls(stock, portfolio, currency),
                           ),
-                          Text(
-                            stock.name,
-                            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+
+                          const SizedBox(width: 14),
+
+                          // Right Column: Live Order Book with Red/Green Depth Rows
+                          Expanded(
+                            flex: 44,
+                            child: _buildRightOrderBook(stock),
                           ),
                         ],
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Rs. ${currency.format(stock.price)}',
-                            style: AppTypography.financialLarge.copyWith(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          PriceChangeBadge(
-                            changeAmount: stock.change,
-                            changePercent: stock.changePercent,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  InteractiveStockChart(
-                    symbol: stock.symbol,
-                    currentPrice: stock.price,
-                    changePercent: stock.changePercent,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // Trading Panel Card
-            AppCard(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Buy / Sell Tabs
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: AppRadius.roundedSm,
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _orderSide = OrderSide.buy),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: _orderSide == OrderSide.buy ? AppColors.success : Colors.transparent,
-                                borderRadius: AppRadius.roundedSm,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'BUY ${stock.symbol}',
-                                  style: TextStyle(
-                                    color: _orderSide == OrderSide.buy ? Colors.white : AppColors.textSecondary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _orderSide = OrderSide.sell),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: _orderSide == OrderSide.sell ? AppColors.danger : Colors.transparent,
-                                borderRadius: AppRadius.roundedSm,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'SELL ${stock.symbol}',
-                                  style: TextStyle(
-                                    color: _orderSide == OrderSide.sell ? Colors.white : AppColors.textSecondary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
 
-                  // Order Type Selection
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Order Type', style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w700)),
-                      Row(
-                        children: [
-                          ChoiceChip(
-                            label: const Text('Market'),
-                            selected: _orderType == OrderType.market,
-                            selectedColor: AppColors.primary,
-                            labelStyle: TextStyle(
-                              color: _orderType == OrderType.market ? Colors.white : AppColors.textPrimary,
-                            ),
-                            onSelected: (val) {
-                              if (val) setState(() => _orderType = OrderType.market);
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          ChoiceChip(
-                            label: const Text('Limit'),
-                            selected: _orderType == OrderType.limit,
-                            selectedColor: AppColors.primary,
-                            labelStyle: TextStyle(
-                              color: _orderType == OrderType.limit ? Colors.white : AppColors.textPrimary,
-                            ),
-                            onSelected: (val) {
-                              if (val) setState(() => _orderType = OrderType.limit);
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
+                    // 4. Promo Banner (e.g. $1,000,000 Gala with close ✕)
+                    if (_showPromoBanner) _buildGalaPromoBanner(),
 
-                  // Quantity Input
-                  TextField(
-                    controller: _quantityController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      labelText: 'Number of Shares',
-                      prefixIcon: const Icon(Icons.format_list_numbered_rounded),
-                      border: OutlineInputBorder(borderRadius: AppRadius.roundedSm),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
+                    const SizedBox(height: 8),
 
-                  // Quick Quantity Badges
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [50, 100, 500, 1000].map((count) {
-                      return ActionChip(
-                        label: Text('+$count', style: const TextStyle(fontSize: 11)),
-                        onPressed: () {
-                          final cur = int.tryParse(_quantityController.text) ?? 0;
-                          setState(() => _quantityController.text = (cur + count).toString());
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
+                    // 5. Bottom Order Management (Open Orders (0), Positions (1), Strategies (0))
+                    _buildOrderManagementSection(portfolio, currency),
 
-                  if (_orderType == OrderType.limit) ...[
-                    TextField(
-                      controller: _limitPriceController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        labelText: 'Limit Price (PKR)',
-                        hintText: currentPrice.toStringAsFixed(2),
-                        prefixIcon: const Icon(Icons.price_change_outlined),
-                        border: OutlineInputBorder(borderRadius: AppRadius.roundedSm),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: 14),
+
+                    // 6. Expandable Live Candlestick Chart Bar at Bottom
+                    _buildCollapsibleChartBar(stock),
+
+                    const SizedBox(height: 24),
                   ],
-
-                  // Summary Box
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: AppRadius.roundedSm,
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildRow('Estimated Subtotal', 'Rs. ${currency.format(estimatedTotal)}'),
-                        const SizedBox(height: 4),
-                        _buildRow('PSX Brokerage (0.15%)', 'Rs. ${currency.format(brokerageFee)}'),
-                        const Divider(height: 12),
-                        _buildRow(
-                          'Estimated Total',
-                          'Rs. ${currency.format(grandTotal)}',
-                          isBold: true,
-                        ),
-                        const SizedBox(height: 4),
-                        _buildRow(
-                          'Available Cash',
-                          'Rs. ${currency.format(portfolio.availableCash)}',
-                          color: AppColors.primary,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: AppSpacing.lg),
-
-                  PrimaryButton(
-                    label: '${_orderSide == OrderSide.buy ? "BUY" : "SELL"} $qty SHARES',
-                    backgroundColor: _orderSide == OrderSide.buy ? AppColors.success : AppColors.danger,
-                    isLoading: _isExecuting,
-                    onPressed: () => _executeTrade(stock!, currentPrice),
-                  ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Order Book Widget
-            _buildSectionHeader('Live Depth / Order Book'),
-            OrderBookWidget(
-              symbol: stock.symbol,
-              currentPrice: stock.price,
-            ),
-
-            const SizedBox(height: AppSpacing.lg),
-
-            // Recent Orders
-            _buildSectionHeader('Your Recent Orders'),
-            AppCard(
-              padding: EdgeInsets.zero,
-              child: portfolio.orders.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Center(
-                        child: Text(
-                          'No orders placed yet. Execute your first trade above!',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: portfolio.orders.take(5).length,
-                      separatorBuilder: (c, i) => const Divider(height: 1),
-                      itemBuilder: (context, idx) {
-                        final ord = portfolio.orders[idx];
-                        final isBuy = ord.side == OrderSide.buy;
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: isBuy ? AppColors.successLight : AppColors.dangerLight,
-                            child: Icon(
-                              isBuy ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
-                              color: isBuy ? AppColors.success : AppColors.danger,
-                              size: 18,
-                            ),
-                          ),
-                          title: Text(
-                            '${ord.side.name.toUpperCase()} ${ord.quantity} ${ord.symbol}',
-                            style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          subtitle: Text(
-                            '${ord.type.name.toUpperCase()} • Rs. ${currency.format(ord.price)}',
-                            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                          ),
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: ord.status == OrderStatus.executed ? AppColors.successLight : AppColors.warningLight,
-                              borderRadius: AppRadius.roundedXs,
-                            ),
-                            child: Text(
-                              ord.status.name.toUpperCase(),
-                              style: TextStyle(
-                                color: ord.status == OrderStatus.executed ? AppColors.success : AppColors.warning,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
             ),
           ],
         ),
@@ -589,34 +304,892 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700),
+  // ── 1. Top Sub-Tabs Bar (Matching Screenshot 2) ──────────────────
+  Widget _buildTopSubTabsBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              // RealStocks with blue NEW badge
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Text(
+                    'RealStocks',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF718096)),
+                  ),
+                  Positioned(
+                    top: -7,
+                    right: -24,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3182CE),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'NEW',
+                        style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w900, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 32),
+              const Text(
+                'Spot',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1A202C)),
+              ),
+              const SizedBox(width: 20),
+              const Text(
+                'Futures',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF718096)),
+              ),
+              const SizedBox(width: 20),
+              const Text(
+                'Predictions',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF718096)),
+              ),
+            ],
+          ),
+          Row(
+            children: const [
+              Text('🏆 ', style: TextStyle(fontSize: 14)),
+              Text(
+                'Join',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF3182CE)),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildRow(String label, String value, {bool isBold = false, Color? color}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // ── 2. Asset Header (LINK/USDT style) ────────────────────────────
+  Widget _buildAssetHeader(StockQuote stock) {
+    final isPos = stock.changePercent >= 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      child: Row(
+        children: [
+          // Symbol Selector with Down Arrow
+          InkWell(
+            onTap: _openStockPickerModal,
+            borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                Text(
+                  '${stock.symbol}/PKR',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1A202C)),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_drop_down_rounded, size: 24, color: Color(0xFF1A202C)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+
+          // Price Change Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: (isPos ? const Color(0xFF38A169) : const Color(0xFFE53E3E)).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              '${isPos ? "+" : ""}${stock.changePercent.toStringAsFixed(2)}%',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: isPos ? const Color(0xFF38A169) : const Color(0xFFE53E3E),
+              ),
+            ),
+          ),
+
+          const Spacer(),
+
+          // 300X / Leverage Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEBF8FF),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Row(
+              children: [
+                Text(
+                  'MTS 3X',
+                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF3182CE)),
+                ),
+                SizedBox(width: 2),
+                Icon(Icons.arrow_right_rounded, size: 14, color: Color(0xFF3182CE)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // Candlestick Icon (Toggles Chart)
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: Icon(
+              Icons.candlestick_chart_rounded,
+              size: 22,
+              color: _showBottomChart ? const Color(0xFF3182CE) : const Color(0xFF718096),
+            ),
+            onPressed: () => setState(() => _showBottomChart = !_showBottomChart),
+          ),
+          const SizedBox(width: 12),
+
+          // More options menu
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.more_horiz_rounded, size: 22, color: Color(0xFF718096)),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('PSX Order Options & Quick Alerts menu')),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 3. Left Column: Trade Inputs ─────────────────────────────────
+  Widget _buildLeftTradingControls(StockQuote stock, dynamic portfolio, NumberFormat currency) {
+    final isBuy = _orderSide == OrderSide.buy;
+    final availableCash = portfolio.availableCash as double;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: AppTypography.bodySmall.copyWith(
-            color: AppColors.textSecondary,
-            fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+        // Buy / Sell Tabs Switcher
+        Container(
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEDF2F7),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _orderSide = OrderSide.buy),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isBuy ? const Color(0xFF38A169) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Buy',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: isBuy ? Colors.white : const Color(0xFF718096),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _orderSide = OrderSide.sell),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: !isBuy ? const Color(0xFFE53E3E) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Sell',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: !isBuy ? Colors.white : const Color(0xFF718096),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        Text(
-          value,
-          style: AppTypography.labelMedium.copyWith(
-            fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
-            color: color,
+        const SizedBox(height: 10),
+
+        // Order Type Dropdown (Market / Limit)
+        Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7FAFC),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFA0AEC0)),
+              DropdownButton<OrderType>(
+                value: _orderType,
+                underline: const SizedBox(),
+                isDense: true,
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1A202C)),
+                items: const [
+                  DropdownMenuItem(value: OrderType.market, child: Text('Market Order')),
+                  DropdownMenuItem(value: OrderType.limit, child: Text('Limit Order')),
+                ],
+                onChanged: (val) {
+                  if (val != null) setState(() => _orderType = val);
+                },
+              ),
+              const Icon(Icons.arrow_drop_down_rounded, size: 18, color: Color(0xFF718096)),
+            ],
           ),
         ),
+        const SizedBox(height: 8),
+
+        // Price Input Field
+        Container(
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEDF2F7),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: _orderType == OrderType.market
+              ? const Text(
+                  'Market Price',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF718096)),
+                )
+              : TextField(
+                  controller: _limitPriceController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+        ),
+        const SizedBox(height: 8),
+
+        // Amount / Total Tab Toggle
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _isTotalMode = false),
+                child: Text(
+                  'Amount',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: !_isTotalMode ? FontWeight.w800 : FontWeight.w500,
+                    color: !_isTotalMode ? const Color(0xFF1A202C) : const Color(0xFF718096),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _isTotalMode = true),
+                child: Text(
+                  'Total',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: _isTotalMode ? FontWeight.w800 : FontWeight.w500,
+                    color: _isTotalMode ? const Color(0xFF1A202C) : const Color(0xFF718096),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+
+        // Stepper Input Box: [—] Total (PKR) [+]
+        Container(
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7FAFC),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.remove, size: 16, color: Color(0xFF718096)),
+                onPressed: () {
+                  final cur = double.tryParse(_amountController.text) ?? 0;
+                  final step = _isTotalMode ? 1000 : 10;
+                  if (cur > step) {
+                    setState(() => _amountController.text = (cur - step).toStringAsFixed(0));
+                  }
+                },
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _amountController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1A202C)),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    hintText: _isTotalMode ? 'Total (PKR)' : 'Shares',
+                  ),
+                ),
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.add, size: 16, color: Color(0xFF718096)),
+                onPressed: () {
+                  final cur = double.tryParse(_amountController.text) ?? 0;
+                  final step = _isTotalMode ? 1000 : 10;
+                  setState(() => _amountController.text = (cur + step).toStringAsFixed(0));
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Slider (0% - 25% - 50% - 75% - 100%)
+        SliderTheme(
+          data: SliderThemeData(
+            trackHeight: 3,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+            activeTrackColor: const Color(0xFFCBD5E0),
+            inactiveTrackColor: const Color(0xFFEDF2F7),
+            thumbColor: Colors.white,
+          ),
+          child: Slider(
+            value: _sliderPercent,
+            divisions: 4,
+            onChanged: (val) => _onSliderChanged(val, availableCash),
+          ),
+        ),
+        const SizedBox(height: 6),
+
+        // Available Balance Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: const [
+                Text(
+                  'Avail.',
+                  style: TextStyle(fontSize: 10.5, color: Color(0xFF718096), fontWeight: FontWeight.w500),
+                ),
+                Icon(Icons.arrow_drop_down, size: 14, color: Color(0xFF718096)),
+              ],
+            ),
+            Row(
+              children: [
+                Text(
+                  '${currency.format(availableCash)} PKR',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2D3748)),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => const DepositCashModal(),
+                    );
+                  },
+                  child: const Icon(Icons.add_circle_outline_rounded, size: 14, color: Color(0xFF3182CE)),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // Huge Action Button: Buy MCB (Green) / Sell MCB (Red)
+        SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: ElevatedButton(
+            onPressed: _isExecuting ? null : _handleExecuteTrade,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isBuy ? const Color(0xFF38A169) : const Color(0xFFE53E3E),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: _isExecuting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : Text(
+                    '${isBuy ? "Buy" : "Sell"} ${stock.symbol}',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── 4. Right Column: Pro Live Order Book ─────────────────────────
+  Widget _buildRightOrderBook(StockQuote stock) {
+    final asks = [
+      {'price': stock.price + 0.35, 'amount': 626.34, 'depth': 0.85},
+      {'price': stock.price + 0.25, 'amount': 73.32, 'depth': 0.25},
+      {'price': stock.price + 0.15, 'amount': 66.63, 'depth': 0.22},
+      {'price': stock.price + 0.10, 'amount': 97.55, 'depth': 0.35},
+      {'price': stock.price + 0.05, 'amount': 7.15, 'depth': 0.08},
+    ];
+
+    final bids = [
+      {'price': stock.price - 0.05, 'amount': 36.24, 'depth': 0.18},
+      {'price': stock.price - 0.10, 'amount': 58.53, 'depth': 0.30},
+      {'price': stock.price - 0.20, 'amount': 279.34, 'depth': 0.70},
+      {'price': stock.price - 0.30, 'amount': 368.02, 'depth': 0.88},
+      {'price': stock.price - 0.45, 'amount': 147.90, 'depth': 0.50},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Column Headers: Price (PKR) | Amount (Shares)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: const [
+            Text(
+              'Price\n(PKR)',
+              style: TextStyle(fontSize: 10, color: Color(0xFF718096), fontWeight: FontWeight.w600, height: 1.1),
+            ),
+            Text(
+              'Amount\n(Shares)',
+              textAlign: TextAlign.end,
+              style: TextStyle(fontSize: 10, color: Color(0xFF718096), fontWeight: FontWeight.w600, height: 1.1),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+
+        // 5 Red Ask Rows (Sellers)
+        ...asks.map((ask) {
+          final p = ask['price'] as double;
+          final a = ask['amount'] as double;
+          final depth = ask['depth'] as double;
+          return _buildOrderBookRow(
+            price: p.toStringAsFixed(2),
+            amount: a.toStringAsFixed(2),
+            color: const Color(0xFFE53E3E),
+            bgColor: const Color(0xFFE53E3E).withOpacity(0.08),
+            depth: depth,
+          );
+        }),
+
+        const SizedBox(height: 6),
+
+        // Live Center Spread Price
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              stock.price.toStringAsFixed(2),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: stock.changePercent >= 0 ? const Color(0xFF38A169) : const Color(0xFFE53E3E),
+              ),
+            ),
+            Text(
+              '≈ Rs. ${stock.price.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 10, color: Color(0xFF718096), fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+
+        // 5 Green Bid Rows (Buyers)
+        ...bids.map((bid) {
+          final p = bid['price'] as double;
+          final a = bid['amount'] as double;
+          final depth = bid['depth'] as double;
+          return _buildOrderBookRow(
+            price: p.toStringAsFixed(2),
+            amount: a.toStringAsFixed(2),
+            color: const Color(0xFF38A169),
+            bgColor: const Color(0xFF38A169).withOpacity(0.08),
+            depth: depth,
+          );
+        }),
+
+        const SizedBox(height: 8),
+
+        // Precision & Layout Switcher (0.001 ▼, icon)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7FAFC),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Row(
+                children: [
+                  Text('0.01', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+                  Icon(Icons.arrow_drop_down, size: 14),
+                ],
+              ),
+            ),
+            Row(
+              children: const [
+                Icon(Icons.format_align_justify, size: 14, color: Color(0xFF718096)),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOrderBookRow({
+    required String price,
+    required String amount,
+    required Color color,
+    required Color bgColor,
+    required double depth,
+  }) {
+    return Stack(
+      alignment: Alignment.centerRight,
+      children: [
+        // Horizontal depth fill bar
+        Align(
+          alignment: Alignment.centerRight,
+          child: FractionallySizedBox(
+            widthFactor: depth,
+            child: Container(
+              height: 18,
+              color: bgColor,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                price,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color),
+              ),
+              Text(
+                amount,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF2D3748)),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── 5. $1,000,000 Trading Gala Banner ────────────────────────────
+  Widget _buildGalaPromoBanner() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          const Text('🎁', style: TextStyle(fontSize: 22)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Rs. 1,000,000 PSX Trading Challenge',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF1A202C)),
+                ),
+                Text(
+                  'Win cash prizes, zero-fee CDC perks & top PSX equities',
+                  style: TextStyle(fontSize: 10, color: Color(0xFF718096)),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.close_rounded, size: 16, color: Color(0xFFA0AEC0)),
+            onPressed: () => setState(() => _showPromoBanner = false),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 6. Bottom Order Management Section ───────────────────────────
+  Widget _buildOrderManagementSection(dynamic portfolio, NumberFormat currency) {
+    final holdings = portfolio.holdings as List<HoldingPosition>;
+    final orders = portfolio.orders as List<TradeOrder>;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tabs: Open Orders (0), Positions (1), Strategies (0)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  _buildManagementTab(0, 'Open Orders (${orders.length})'),
+                  const SizedBox(width: 16),
+                  _buildManagementTab(1, 'Positions (${holdings.length})'),
+                  const SizedBox(width: 16),
+                  _buildManagementTab(2, 'Strategies (0)'),
+                ],
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.receipt_long_rounded, size: 18, color: Color(0xFF718096)),
+                onPressed: () {},
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Filter row: Checkbox 'Hide other pairs' + Sub-filters
+          Row(
+            children: [
+              const Icon(Icons.check_box_outline_blank_rounded, size: 16, color: Color(0xFFA0AEC0)),
+              const SizedBox(width: 6),
+              const Text(
+                'Hide other pairs',
+                style: TextStyle(fontSize: 11, color: Color(0xFF718096), fontWeight: FontWeight.w500),
+              ),
+              const Spacer(),
+              _buildSubFilterChip('Limit | Market (${orders.length})', true),
+              const SizedBox(width: 6),
+              _buildSubFilterChip('Stop Loss (0)', false),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Positions / Orders List Body
+          if (_orderManagementTab == 1) ...[
+            if (holdings.isEmpty)
+              _buildEmptyOrdersState('No open positions')
+            else
+              ...holdings.map((h) => _buildPositionCard(h, currency)),
+          ] else ...[
+            if (orders.isEmpty)
+              _buildEmptyOrdersState('No active open orders')
+            else
+              ...orders.map((o) => _buildOrderTile(o, currency)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManagementTab(int index, String title) {
+    final isSelected = _orderManagementTab == index;
+    return GestureDetector(
+      onTap: () => setState(() => _orderManagementTab = index),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+          color: isSelected ? const Color(0xFF1A202C) : const Color(0xFF718096),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubFilterChip(String label, bool isSelected) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFEDF2F7) : Colors.transparent,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: isSelected ? const Color(0xFF2D3748) : const Color(0xFFA0AEC0),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyOrdersState(String msg) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Center(
+        child: Column(
+          children: [
+            const Icon(Icons.inbox_outlined, size: 36, color: Color(0xFFCBD5E0)),
+            const SizedBox(height: 6),
+            Text(msg, style: const TextStyle(fontSize: 12, color: Color(0xFF718096))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPositionCard(HoldingPosition h, NumberFormat currency) {
+    final stock = MockMarketData.allPsxStocks.firstWhere(
+      (s) => s.symbol == h.symbol,
+      orElse: () => MockMarketData.allPsxStocks.first,
+    );
+    final pnl = (stock.price - h.avgBuyPrice) * h.shares;
+    final pnlPct = h.avgBuyPrice > 0 ? (stock.price - h.avgBuyPrice) / h.avgBuyPrice * 100 : 0.0;
+    final isPos = pnl >= 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${h.symbol} • ${h.shares} Shares', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 2),
+              Text('Avg: Rs. ${currency.format(h.avgBuyPrice)}', style: const TextStyle(fontSize: 11, color: Color(0xFF718096))),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${isPos ? "+" : ""}Rs. ${currency.format(pnl)}',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: isPos ? const Color(0xFF38A169) : const Color(0xFFE53E3E)),
+              ),
+              Text(
+                '${isPos ? "+" : ""}${pnlPct.toStringAsFixed(2)}%',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isPos ? const Color(0xFF38A169) : const Color(0xFFE53E3E)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderTile(TradeOrder o, NumberFormat currency) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: o.side == OrderSide.buy ? const Color(0xFF38A169).withOpacity(0.12) : const Color(0xFFE53E3E).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  o.side == OrderSide.buy ? 'BUY' : 'SELL',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: o.side == OrderSide.buy ? const Color(0xFF38A169) : const Color(0xFFE53E3E)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(o.symbol, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          Text('${o.quantity} shares @ Rs. ${currency.format(o.price)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  // ── 7. Expandable Candlestick Chart Bar at Bottom ────────────────
+  Widget _buildCollapsibleChartBar(StockQuote stock) {
+    return Column(
+      children: [
+        InkWell(
+          onTap: () => setState(() => _showBottomChart = !_showBottomChart),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            color: const Color(0xFFF7FAFC),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${stock.symbol}/PKR Live Chart',
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF2D3748)),
+                ),
+                Row(
+                  children: [
+                    Text(
+                      _showBottomChart ? 'Hide' : 'Show',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF3182CE)),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      _showBottomChart ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: const Color(0xFF3182CE),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_showBottomChart)
+          Container(
+            height: 280,
+            padding: const EdgeInsets.all(12),
+            child: InteractiveStockChart(
+              symbol: stock.symbol,
+              currentPrice: stock.price,
+              changePercent: stock.changePercent,
+            ),
+          ),
       ],
     );
   }
