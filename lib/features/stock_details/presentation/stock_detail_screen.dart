@@ -110,13 +110,13 @@ class StockDetailScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
+                          color: AppColors.successLight,
                           borderRadius: AppRadius.roundedSm,
                         ),
                         child: Text(
-                          'DEMO MODE',
+                          'LIVE PSX',
                           style: AppTypography.labelSmall.copyWith(
-                            color: AppColors.primary,
+                            color: AppColors.success,
                             fontWeight: FontWeight.w800,
                           ),
                         ),

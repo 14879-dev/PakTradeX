@@ -130,7 +130,7 @@ class _DepositCashModalState extends ConsumerState<DepositCashModal> {
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'Instant demo balance top-up via Pakistan financial rails.',
+          'Instant cash top-up via Pakistan financial rails (Raast, 1Bill, EasyPaisa, JazzCash).',
           style: AppTypography.bodySmall,
         ),
         const SizedBox(height: AppSpacing.md),

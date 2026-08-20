@@ -104,9 +104,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return true;
   }
 
-  // ── Guest ────────────────────────────────────────────────────────
+  // ── Biometric Session Unlock (Authentic Token Only) ──────────────
 
-  void loginAsGuest() => state = AuthState.guest();
+  Future<UserModel?> tryBiometricUnlock() async {
+    final user = await _svc.tryRestoreSession();
+    if (user != null) {
+      final u = _fromAuthUser(user);
+      state = AuthState.authenticated(u);
+      return u;
+    }
+    return null;
+  }
 
   // ── Logout ───────────────────────────────────────────────────────
 

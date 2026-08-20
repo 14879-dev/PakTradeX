@@ -92,7 +92,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
                           borderRadius: AppRadius.roundedSm,
                         ),
                         child: Text(
-                          'DEMO PORTFOLIO',
+                          'MAIN PORTFOLIO',
                           style: AppTypography.labelSmall.copyWith(
                             color: Colors.white,
                             fontSize: 10,

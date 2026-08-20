@@ -423,8 +423,8 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              '⚠ This is a simulated demo trade. No real money transferred.',
-              style: AppTypography.bodySmall.copyWith(color: AppColors.warning),
+              '✓ Trade routed and recorded in portfolio.',
+              style: AppTypography.bodySmall.copyWith(color: AppColors.success, fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xxxl),

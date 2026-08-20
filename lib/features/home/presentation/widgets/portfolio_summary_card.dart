@@ -63,7 +63,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                   borderRadius: AppRadius.roundedSm,
                 ),
                 child: Text(
-                  'DEMO PORTFOLIO',
+                  'PSX INVESTMENT ACCOUNT',
                   style: AppTypography.labelSmall.copyWith(
                     color: Colors.white.withValues(alpha: 0.9),
                     letterSpacing: 0.8,

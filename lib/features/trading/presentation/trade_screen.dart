@@ -304,68 +304,67 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
     );
   }
 
-  // ── 1. Top Sub-Tabs Bar (Matching Screenshot 2) ──────────────────
+  // ── 1. Top Sub-Tabs Bar (Matching Screenshot 2 - Overflow-Proof) ───
   Widget _buildTopSubTabsBar() {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              // RealStocks with blue NEW badge
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Text(
-                    'RealStocks',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF718096)),
-                  ),
-                  Positioned(
-                    top: -7,
-                    right: -24,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3182CE),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'NEW',
-                        style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w900, color: Colors.white),
-                      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            // RealStocks with blue NEW badge
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Text(
+                  'RealStocks',
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: Color(0xFF718096)),
+                ),
+                Positioned(
+                  top: -7,
+                  right: -22,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3182CE),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'NEW',
+                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.white),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(width: 32),
-              const Text(
-                'Spot',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1A202C)),
-              ),
-              const SizedBox(width: 20),
-              const Text(
-                'Futures',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF718096)),
-              ),
-              const SizedBox(width: 20),
-              const Text(
-                'Predictions',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF718096)),
-              ),
-            ],
-          ),
-          Row(
-            children: const [
-              Text('🏆 ', style: TextStyle(fontSize: 14)),
-              Text(
-                'Join',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF3182CE)),
-              ),
-            ],
-          ),
-        ],
+                ),
+              ],
+            ),
+            const SizedBox(width: 28),
+            const Text(
+              'Spot',
+              style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w900, color: Color(0xFF1A202C)),
+            ),
+            const SizedBox(width: 18),
+            const Text(
+              'Futures',
+              style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500, color: Color(0xFF718096)),
+            ),
+            const SizedBox(width: 18),
+            const Text(
+              'Predictions',
+              style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500, color: Color(0xFF718096)),
+            ),
+            const SizedBox(width: 20),
+            Row(
+              children: const [
+                Text('🏆 ', style: TextStyle(fontSize: 13)),
+                Text(
+                  'Join',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF3182CE)),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

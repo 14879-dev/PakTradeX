@@ -4,7 +4,6 @@ enum AuthStatus {
   authenticating,
   otpPending,
   authenticated,
-  guest,
 }
 
 class UserModel {
@@ -95,19 +94,7 @@ class AuthState {
         user: user,
       );
 
-  factory AuthState.guest() => const AuthState(
-        status: AuthStatus.guest,
-        user: UserModel(
-          id: 'guest-001',
-          fullName: 'Guest Trader',
-          email: 'guest@paktradex.pk',
-          phoneNumber: '+923001234567',
-          pakTradeId: 'PTX-000001',
-        ),
-      );
-
-  bool get isAuthenticated =>
-      status == AuthStatus.authenticated || status == AuthStatus.guest;
+  bool get isAuthenticated => status == AuthStatus.authenticated;
 
   bool get isInitializing => status == AuthStatus.initial;
 }

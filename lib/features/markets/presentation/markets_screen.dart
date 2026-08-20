@@ -293,96 +293,103 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
         children: [
           // Row of 3 Metrics: Fear&Greed Meter, 24H PSX Volume, Bulls vs Bears
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Fear & Greed Meter
-              Column(
-                children: [
-                  const Text(
-                    'Fear & Greed',
-                    style: TextStyle(fontSize: 11.5, color: Color(0xFF718096), fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 6),
-                  SizedBox(
-                    width: 76,
-                    height: 46,
-                    child: CustomPaint(
-                      painter: _FearGreedGaugePainter(value: 61),
-                      child: const Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Text(
-                          '61',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF1A202C),
+              Expanded(
+                child: Column(
+                  children: [
+                    const Text(
+                      'Fear & Greed',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF718096), fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: 72,
+                      height: 44,
+                      child: CustomPaint(
+                        painter: _FearGreedGaugePainter(value: 61),
+                        child: const Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Text(
+                            '61',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF1A202C),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Greed',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF38A169)),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Greed',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF38A169)),
+                    ),
+                  ],
+                ),
               ),
 
               // 24H PSX Volume
-              Column(
-                children: [
-                  const Text(
-                    '24H Volume',
-                    style: TextStyle(fontSize: 11.5, color: Color(0xFF718096), fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '48.2B',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1A202C)),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    '+8.96%',
-                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF38A169)),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  children: [
+                    const Text(
+                      '24H Volume',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF718096), fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '48.2B',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF1A202C)),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      '+8.96%',
+                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF38A169)),
+                    ),
+                  ],
+                ),
               ),
 
               // Bulls vs Bears (L/S)
-              Column(
-                children: [
-                  const Text(
-                    'PSX Bulls / Bears',
-                    style: TextStyle(fontSize: 11.5, color: Color(0xFF718096), fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: const [
-                      Text(
-                        '70.0',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1A202C)),
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        '30.0',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF718096)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  // Green / Red ratio bar
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: Row(
-                      children: [
-                        Container(width: 44, height: 4, color: const Color(0xFF38A169)),
-                        Container(width: 20, height: 4, color: const Color(0xFFE53E3E)),
+              Expanded(
+                child: Column(
+                  children: [
+                    const Text(
+                      'PSX Bulls / Bears',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF718096), fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Text(
+                          '70.0',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF1A202C)),
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          '30.0',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF718096)),
+                        ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 6),
+                    // Green / Red ratio bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(width: 40, height: 4, color: const Color(0xFF38A169)),
+                          Container(width: 18, height: 4, color: const Color(0xFFE53E3E)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -722,7 +729,7 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Trade PSX stocks risk-free in Demo Sandbox',
+                  'Trade PSX stocks with virtual portfolio capital',
                   style: TextStyle(fontSize: 11, color: Color(0xFFE2E8F0)),
                 ),
               ],

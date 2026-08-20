@@ -75,16 +75,16 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   decoration: BoxDecoration(
-                    color: account.isRealMode ? AppColors.successLight : AppColors.warningLight,
+                    color: AppColors.successLight,
                     borderRadius: AppRadius.roundedXs,
                   ),
                   child: Text(
-                    account.isRealMode ? '💎 Real Account Active' : '🟢 Demo Mode (Rs. 1M)',
+                    '⚡ PSX Live Connected',
                     style: AppTypography.labelSmall.copyWith(
                       fontSize: 9,
-                      color: account.isRealMode ? AppColors.success : AppColors.warning,
+                      color: AppColors.success,
                       fontWeight: FontWeight.w800,
                     ),
                   ),

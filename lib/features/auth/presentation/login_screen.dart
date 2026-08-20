@@ -26,19 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        actions: [
-          TextButton(
-            onPressed: () {
-              ref.read(authProvider.notifier).loginAsGuest();
-              context.go('/home');
-            },
-            child: Text(
-              'Guest Mode',
-              style: AppTypography.labelMedium.copyWith(color: AppColors.primary),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
+        elevation: 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -153,15 +141,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Biometric Shortcut Button
+              // Biometric Unlock (Authentic Session)
               OutlinedButton.icon(
                 onPressed: () async {
                   setState(() => _isLoading = true);
-                  await Future.delayed(const Duration(milliseconds: 400));
-                  ref.read(authProvider.notifier).loginAsGuest();
+                  final user = await ref.read(authProvider.notifier).tryBiometricUnlock();
                   if (!context.mounted) return;
                   setState(() => _isLoading = false);
-                  context.go('/home');
+
+                  if (user != null) {
+                    context.go('/home');
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('No saved biometric session found. Please sign in with password.')),
+                    );
+                  }
                 },
                 icon: const Icon(Icons.fingerprint_rounded, color: AppColors.primary, size: 22),
                 label: const Text('Unlock with Biometrics (Touch ID / Face)'),

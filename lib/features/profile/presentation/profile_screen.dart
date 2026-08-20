@@ -211,7 +211,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Demo Account',
+                              'Sandbox Account',
                               style: TextStyle(
                                 color: account.isDemoMode ? Colors.white : AppColors.textSecondary,
                                 fontWeight: FontWeight.w800,
@@ -308,7 +308,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 borderRadius: AppRadius.roundedXs,
                               ),
                               child: Text(
-                                account.isKycVerified ? 'Verified SECP Trader' : 'Demo Account (KYC Pending)',
+                                account.isKycVerified ? 'Verified SECP Trader' : 'Unverified (KYC Pending)',
                                 style: AppTypography.labelSmall.copyWith(
                                   color: account.isKycVerified ? AppColors.success : AppColors.warning,
                                   fontSize: 10,
@@ -527,8 +527,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.refresh_rounded, color: AppColors.warning, size: 22),
-                    title: Text('Reset Demo Portfolio', style: AppTypography.bodyMedium),
-                    subtitle: Text('Reset virtual cash to Rs. 1,000,000', style: AppTypography.bodySmall),
+                    title: Text('Reset Portfolio Balance', style: AppTypography.bodyMedium),
+                    subtitle: Text('Reset cash balance to Rs. 1,000,000', style: AppTypography.bodySmall),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: _showResetDemoDialog,
                   ),
@@ -548,16 +548,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     title: Text('Biometric Login', style: AppTypography.bodyMedium),
                     subtitle: Text('Use Fingerprint / Face ID to unlock', style: AppTypography.bodySmall),
                     value: _biometricEnabled,
-                    activeColor: AppColors.primary,
+                    activeThumbColor: AppColors.primary,
                     onChanged: (val) => setState(() => _biometricEnabled = val),
                   ),
                   const Divider(height: 1),
                   SwitchListTile(
-                    secondary: const Icon(Icons.phonelink_lock_rounded, color: AppColors.primary, size: 22),
+                    secondary: const Icon(Icons.security_rounded, color: AppColors.primary, size: 22),
                     title: Text('Two-Factor Authentication (2FA)', style: AppTypography.bodyMedium),
-                    subtitle: Text('Require SMS OTP on withdrawals', style: AppTypography.bodySmall),
+                    subtitle: Text('SMS OTP required for trading actions', style: AppTypography.bodySmall),
                     value: _twoFactorEnabled,
-                    activeColor: AppColors.primary,
+                    activeThumbColor: AppColors.primary,
                     onChanged: (val) => setState(() => _twoFactorEnabled = val),
                   ),
                 ],
