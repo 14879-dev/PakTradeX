@@ -87,17 +87,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final result = await _svc.verifyOtp(email: email, code: code);
 
     if (result.error != null || result.user == null) {
-      // Fallback: accept any 6-digit code if backend is offline
-      state = AuthState.authenticated(
-        UserModel(
-          id: 'usr-offline-${DateTime.now().millisecondsSinceEpoch}',
-          fullName: 'PakTrade Investor',
-          email: email,
-          phoneNumber: '',
-          pakTradeId: 'PTX-${(100000 + DateTime.now().millisecond * 999).toString().substring(0, 6)}',
-        ),
+      state = AuthState.unauthenticated(
+        result.error ?? 'OTP verification failed. Please check your code or ensure the PakTradeX server is running.',
       );
-      return true;
+      return false;
     }
 
     state = AuthState.authenticated(_fromAuthUser(result.user!));

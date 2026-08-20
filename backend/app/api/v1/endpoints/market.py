@@ -2,7 +2,7 @@
 Market Data API endpoints — real PSX data from yfinance.
 """
 from fastapi import APIRouter
-from ...services import market_data_service as mds
+from ....services import market_data_service as mds
 
 router = APIRouter()
 

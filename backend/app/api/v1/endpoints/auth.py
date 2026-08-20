@@ -10,10 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
 
-from ...core.database import get_db
-from ...core.security import hash_password, verify_password, create_access_token, decode_token
-from ...models.db_models import User, Base
-from ...schemas.api_schemas import UserRegister, UserLogin, OtpVerify, TokenResponse
+from ....core.database import get_db
+from ....core.security import hash_password, verify_password, create_access_token, decode_token
+from ....models.db_models import User, Base
+from ....schemas.api_schemas import UserRegister, UserLogin, OtpVerify, TokenResponse
 
 router = APIRouter()
 

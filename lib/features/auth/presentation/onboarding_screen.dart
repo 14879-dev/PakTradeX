@@ -34,10 +34,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     },
     {
       'icon': Icons.shield_outlined,
-      'badge': 'RISK-FREE SIMULATION',
-      'title': 'Simulated Demo Trading & Wallet',
+      'badge': 'PORTFOLIO SIMULATION',
+      'title': 'Practice Trading with Virtual Capital',
       'description':
-          'Master portfolio construction with Rs. 1,000,000 in virtual sandbox capital before connecting to licensed brokerage accounts.',
+          'Build confidence with Rs. 1,000,000 in virtual portfolio capital before connecting to licensed brokerage accounts.',
     },
   ];
 
@@ -49,7 +49,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         backgroundColor: Colors.transparent,
         actions: [
           TextButton(
-            onPressed: () => context.go('/home'),
+            onPressed: () => context.go('/login'),
             child: Text(
               'Skip',
               style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary),

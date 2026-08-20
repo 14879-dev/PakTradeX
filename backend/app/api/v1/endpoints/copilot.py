@@ -4,8 +4,8 @@ AI Copilot endpoint — powered by Gemini 2.0 Flash with live PSX market context
 import re
 import uuid
 from fastapi import APIRouter
-from ...schemas.api_schemas import CopilotQuery, CopilotResponse
-from ...services import gemini_service
+from ....schemas.api_schemas import CopilotQuery, CopilotResponse
+from ....services import gemini_service
 
 router = APIRouter()
 

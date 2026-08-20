@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
-from ...schemas.api_schemas import StockQuoteSchema, OrderBookSchema, OrderBookLevel
+from ....schemas.api_schemas import StockQuoteSchema, OrderBookSchema, OrderBookLevel
 
 router = APIRouter()
 
