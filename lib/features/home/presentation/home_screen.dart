@@ -530,18 +530,30 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.xl),
 
-              // 5. Market Movers (Gainers / Losers)
+              // 5. Market Movers (Gainers / Losers with Live Real-Time Data)
               SectionHeader(
                 title: 'Market Movers',
                 actionLabel: 'View All',
                 onActionTap: () => context.go('/markets'),
               ),
               const SizedBox(height: AppSpacing.sm),
-              MarketMoversCard(
-                gainers: MockMarketData.topGainers,
-                losers: MockMarketData.topLosers,
-                onStockTap: (stock) {
-                  context.go('/home/stock/${stock.symbol}', extra: stock);
+              Builder(
+                builder: (context) {
+                  final marketState = ref.watch(marketProvider);
+                  final gainers = marketState.overview.topGainers.isNotEmpty
+                      ? marketState.overview.topGainers
+                      : MockMarketData.topGainers;
+                  final losers = marketState.overview.topLosers.isNotEmpty
+                      ? marketState.overview.topLosers
+                      : MockMarketData.topLosers;
+
+                  return MarketMoversCard(
+                    gainers: gainers,
+                    losers: losers,
+                    onStockTap: (stock) {
+                      context.go('/home/stock/${stock.symbol}', extra: stock);
+                    },
+                  );
                 },
               ),
               const SizedBox(height: AppSpacing.xl),

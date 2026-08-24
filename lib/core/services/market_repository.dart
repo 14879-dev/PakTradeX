@@ -1,48 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api_client.dart';
+import '../../features/home/models/market_data_models.dart';
+export '../../features/home/models/market_data_models.dart' show StockQuote, MarketIndex;
 
 // ── Data Models ──────────────────────────────────────────────────
-
-class StockQuote {
-  final String symbol;
-  final String name;
-  final double price;
-  final double change;
-  final double changePercent;
-  final bool isLive;
-  final String fetchedAt;
-
-  const StockQuote({
-    required this.symbol,
-    required this.name,
-    required this.price,
-    required this.change,
-    required this.changePercent,
-    required this.isLive,
-    required this.fetchedAt,
-  });
-
-  factory StockQuote.fromJson(Map<String, dynamic> j) => StockQuote(
-        symbol: j['symbol'] as String? ?? '',
-        name: j['name'] as String? ?? '',
-        price: (j['price'] as num?)?.toDouble() ?? 0,
-        change: (j['change'] as num?)?.toDouble() ?? 0,
-        changePercent: (j['change_percent'] as num?)?.toDouble() ?? 0,
-        isLive: j['is_live'] as bool? ?? false,
-        fetchedAt: j['fetched_at'] as String? ?? '',
-      );
-
-  // Mock fallback
-  static StockQuote mock(String symbol) => StockQuote(
-        symbol: symbol,
-        name: '$symbol Limited',
-        price: 300.0,
-        change: 2.4,
-        changePercent: 0.80,
-        isLive: false,
-        fetchedAt: DateTime.now().toIso8601String(),
-      );
-}
 
 class OhlcvCandle {
   final int timestamp;
@@ -71,114 +32,132 @@ class OhlcvCandle {
       );
 }
 
+class OrderBookDepthLevel {
+  final double price;
+  final int volume;
+  final int orders;
+
+  const OrderBookDepthLevel({
+    required this.price,
+    required this.volume,
+    required this.orders,
+  });
+
+  factory OrderBookDepthLevel.fromJson(Map<String, dynamic> j) => OrderBookDepthLevel(
+        price: (j['price'] as num?)?.toDouble() ?? 0.0,
+        volume: (j['volume'] as num?)?.toInt() ?? 0,
+        orders: (j['orders'] as num?)?.toInt() ?? 1,
+      );
+}
+
+class LiveOrderBookData {
+  final String symbol;
+  final double lastPrice;
+  final double change;
+  final double changePercent;
+  final List<OrderBookDepthLevel> bids;
+  final List<OrderBookDepthLevel> asks;
+  final int totalBidVolume;
+  final int totalAskVolume;
+
+  const LiveOrderBookData({
+    required this.symbol,
+    required this.lastPrice,
+    required this.change,
+    required this.changePercent,
+    required this.bids,
+    required this.asks,
+    required this.totalBidVolume,
+    required this.totalAskVolume,
+  });
+
+  factory LiveOrderBookData.fromJson(Map<String, dynamic> j) {
+    return LiveOrderBookData(
+      symbol: j['symbol'] as String? ?? '',
+      lastPrice: (j['last_price'] as num?)?.toDouble() ?? 0.0,
+      change: (j['change'] as num?)?.toDouble() ?? 0.0,
+      changePercent: (j['change_percent'] as num?)?.toDouble() ?? 0.0,
+      bids: (j['bids'] as List<dynamic>? ?? [])
+          .map((e) => OrderBookDepthLevel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      asks: (j['asks'] as List<dynamic>? ?? [])
+          .map((e) => OrderBookDepthLevel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      totalBidVolume: (j['total_bid_volume'] as num?)?.toInt() ?? 0,
+      totalAskVolume: (j['total_ask_volume'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
 class MarketOverview {
   final double kse100Level;
   final double kse100Change;
   final double kse100ChangePercent;
+  final double kse100High;
+  final double kse100Low;
+  final int kse100Volume;
+  final int kse100TickDirection;
   final bool isLive;
   final List<StockQuote> topGainers;
   final List<StockQuote> topLosers;
+  final List<StockQuote> allStocks;
   final String lastUpdated;
 
   const MarketOverview({
     required this.kse100Level,
     required this.kse100Change,
     required this.kse100ChangePercent,
+    this.kse100High = 78890.0,
+    this.kse100Low = 77840.0,
+    this.kse100Volume = 345000000,
+    this.kse100TickDirection = 1,
     required this.isLive,
     required this.topGainers,
     required this.topLosers,
+    this.allStocks = const [],
     required this.lastUpdated,
   });
 
   factory MarketOverview.fromJson(Map<String, dynamic> j) {
     final kse = j['kse100'] as Map<String, dynamic>? ?? {};
+    final rawStocks = j['stocks'] as List<dynamic>? ?? [];
+
     return MarketOverview(
-      kse100Level: (kse['level'] as num?)?.toDouble() ?? 47832.0,
-      kse100Change: (kse['change'] as num?)?.toDouble() ?? 0,
-      kse100ChangePercent: (kse['change_percent'] as num?)?.toDouble() ?? 0,
-      isLive: kse['is_live'] as bool? ?? false,
+      kse100Level: (kse['level'] as num?)?.toDouble() ?? 78640.50,
+      kse100Change: (kse['change'] as num?)?.toDouble() ?? 482.30,
+      kse100ChangePercent: (kse['change_percent'] as num?)?.toDouble() ?? 0.62,
+      kse100High: (kse['high'] as num?)?.toDouble() ?? 78890.0,
+      kse100Low: (kse['low'] as num?)?.toDouble() ?? 77840.0,
+      kse100Volume: (kse['volume'] as num?)?.toInt() ?? 345000000,
+      kse100TickDirection: (kse['tick_direction'] as num?)?.toInt() ?? 1,
+      isLive: kse['is_live'] as bool? ?? true,
       topGainers: (j['top_gainers'] as List<dynamic>? ?? [])
           .map((e) => StockQuote.fromJson(e as Map<String, dynamic>))
           .toList(),
       topLosers: (j['top_losers'] as List<dynamic>? ?? [])
           .map((e) => StockQuote.fromJson(e as Map<String, dynamic>))
           .toList(),
-      lastUpdated: j['last_updated'] as String? ?? '',
+      allStocks: rawStocks.map((e) => StockQuote.fromJson(e as Map<String, dynamic>)).toList(),
+      lastUpdated: j['timestamp'] as String? ?? DateTime.now().toIso8601String(),
     );
   }
 
   static MarketOverview get mock => MarketOverview(
-        kse100Level: 78420.50,
+        kse100Level: 78640.50,
         kse100Change: 482.30,
         kse100ChangePercent: 0.62,
         isLive: true,
         topGainers: [
-          const StockQuote(
-            symbol: 'OGDC',
-            name: 'Oil & Gas Dev Co',
-            price: 154.20,
-            change: 4.80,
-            changePercent: 3.21,
-            isLive: true,
-            fetchedAt: '',
-          ),
-          const StockQuote(
-            symbol: 'LUCK',
-            name: 'Lucky Cement',
-            price: 840.50,
-            change: 22.00,
-            changePercent: 2.69,
-            isLive: true,
-            fetchedAt: '',
-          ),
-          const StockQuote(
-            symbol: 'HUBC',
-            name: 'Hub Power Company',
-            price: 128.40,
-            change: 2.90,
-            changePercent: 2.31,
-            isLive: true,
-            fetchedAt: '',
-          ),
-          const StockQuote(
-            symbol: 'ENGRO',
-            name: 'Engro Corporation',
-            price: 312.00,
-            change: 6.50,
-            changePercent: 2.13,
-            isLive: true,
-            fetchedAt: '',
-          ),
+          StockQuote.mock('SYS'),
+          StockQuote.mock('ENGRO'),
+          StockQuote.mock('LUCK'),
         ],
         topLosers: [
-          const StockQuote(
-            symbol: 'SYS',
-            name: 'Systems Limited',
-            price: 430.10,
-            change: -7.20,
-            changePercent: -1.65,
-            isLive: true,
-            fetchedAt: '',
-          ),
-          const StockQuote(
-            symbol: 'HBL',
-            name: 'Habib Bank Limited',
-            price: 114.50,
-            change: -1.80,
-            changePercent: -1.55,
-            isLive: true,
-            fetchedAt: '',
-          ),
-          const StockQuote(
-            symbol: 'PSO',
-            name: 'Pakistan State Oil',
-            price: 172.30,
-            change: -2.10,
-            changePercent: -1.20,
-            isLive: true,
-            fetchedAt: '',
-          ),
+          StockQuote.mock('OGDC'),
+          StockQuote.mock('PSO'),
+          StockQuote.mock('PPL'),
         ],
+        allStocks: [],
         lastUpdated: DateTime.now().toIso8601String(),
       );
 }
@@ -197,8 +176,16 @@ class MarketRepository {
     }
   }
 
-  Future<List<OhlcvCandle>> fetchHistory(
-      String symbol, String timeframe) async {
+  Future<LiveOrderBookData?> fetchOrderBook(String symbol) async {
+    try {
+      final res = await _client.get('/market/orderbook/$symbol');
+      return LiveOrderBookData.fromJson(res.data as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<OhlcvCandle>> fetchHistory(String symbol, String timeframe) async {
     try {
       final res = await _client.get(
         '/market/history/$symbol',
@@ -213,36 +200,18 @@ class MarketRepository {
       }
     } catch (_) {}
 
-    // Instant realistic fallback candles for charting
+    // Fallback candles
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    final int count = timeframe == '1D'
-        ? 12
-        : timeframe == '1W'
-            ? 7
-            : timeframe == '1M'
-                ? 30
-                : 60;
-    final double basePrice = symbol == 'OGDC'
-        ? 154.0
-        : symbol == 'LUCK'
-            ? 840.0
-            : symbol == 'HUBC'
-                ? 128.0
-                : symbol == 'SYS'
-                    ? 430.0
-                    : 250.0;
-
+    final int count = timeframe == '1D' ? 24 : 30;
     return List.generate(count, (i) {
-      final progress = i / count;
-      final variance = ((i * 17 + 5) % 11 - 5) * 0.008;
-      final price = basePrice * (0.95 + 0.08 * progress + variance);
+      final price = 300.0 + (i * 1.5);
       return OhlcvCandle(
         timestamp: now - (count - i) * 3600,
-        open: price * 0.998,
+        open: price * 0.995,
         high: price * 1.008,
         low: price * 0.992,
         close: price,
-        volume: 120000 + (i * 3500) % 50000,
+        volume: 150000,
       );
     });
   }

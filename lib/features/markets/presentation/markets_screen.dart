@@ -10,6 +10,7 @@ import '../../../core/widgets/price_change_badge.dart';
 import '../../home/data/mock_market_data.dart';
 import '../../home/models/market_data_models.dart';
 import '../../profile/providers/account_provider.dart';
+import '../providers/market_provider.dart';
 
 class MarketsScreen extends ConsumerStatefulWidget {
   const MarketsScreen({super.key});
@@ -63,34 +64,29 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
     super.dispose();
   }
 
-  List<StockQuote> _getFilteredStocks(int tabIndex) {
+  List<StockQuote> _getFilteredStocks(int tabIndex, MarketState marketState) {
+    final liveList = marketState.overview.allStocks.isNotEmpty
+        ? marketState.overview.allStocks
+        : MockMarketData.allPsxStocks;
+
     List<StockQuote> base;
     switch (tabIndex) {
       case 1: // Favorites
-        base = MockMarketData.allPsxStocks
-            .where((s) => _favorites.contains(s.symbol))
-            .toList();
+        base = liveList.where((s) => _favorites.contains(s.symbol)).toList();
       case 2: // PSX Stocks
-        base = MockMarketData.allPsxStocks;
+        base = liveList;
       case 3: // Top Gainers
-        base = MockMarketData.topGainers;
+        base = marketState.overview.topGainers.isNotEmpty
+            ? marketState.overview.topGainers
+            : liveList.where((s) => s.changePercent > 0).toList();
       case 4: // Shariah
-        base = MockMarketData.allPsxStocks
-            .where((s) => [
-                  'SYS',
-                  'ENGRO',
-                  'OGDC',
-                  'LUCK',
-                  'MARI',
-                  'HUBC',
-                  'FFC',
-                  'MEBL',
-                  'SEARL'
-                ].contains(s.symbol))
-            .toList();
+        base = liveList.where((s) => s.isShariah).toList();
+        if (base.isEmpty) {
+          base = liveList.where((s) => ['SYS', 'ENGRO', 'OGDC', 'LUCK', 'MARI', 'HUBC', 'FFC', 'MEBL', 'SEARL'].contains(s.symbol)).toList();
+        }
       case 5: // Sectors
       default:
-        base = MockMarketData.allPsxStocks;
+        base = liveList;
     }
 
     return base.where((s) {
@@ -107,13 +103,15 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final marketState = ref.watch(marketProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
       body: SafeArea(
         child: Column(
           children: [
             // Top Search Bar Header
-            _buildTopSearchBar(),
+            _buildTopSearchBar(marketState),
 
             // Horizontal Category Navigation Tabs
             _buildCategoryTabs(),
@@ -125,12 +123,12 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildInsightsTab(),
-                  _buildStocksListTab(1),
-                  _buildStocksListTab(2),
-                  _buildStocksListTab(3),
-                  _buildStocksListTab(4),
-                  _buildStocksListTab(5),
+                  _buildInsightsTab(marketState),
+                  _buildStocksListTab(1, marketState),
+                  _buildStocksListTab(2, marketState),
+                  _buildStocksListTab(3, marketState),
+                  _buildStocksListTab(4, marketState),
+                  _buildStocksListTab(5, marketState),
                 ],
               ),
             ),
@@ -140,8 +138,12 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
     );
   }
 
-  // ── Top Search Bar (Matching Screenshot 1) ──────────────────────
-  Widget _buildTopSearchBar() {
+  // ── Top Search Bar with Live KSE-100 Ticker ──────────────────────
+  Widget _buildTopSearchBar(MarketState marketState) {
+    final kse = marketState.overview;
+    final isPos = kse.kse100ChangePercent >= 0;
+    final hint = '🔥 KSE-100 ${kse.kse100Level.toStringAsFixed(0)} (${isPos ? '+' : ''}${kse.kse100ChangePercent.toStringAsFixed(2)}%) · Search';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
       child: Row(
@@ -157,11 +159,11 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
                 onChanged: (val) => setState(() => _searchQuery = val),
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 decoration: InputDecoration(
-                  hintText: '🔥 KSE-100 breaks 78,400 · Search PSX Stocks',
-                  hintStyle: const TextStyle(
+                  hintText: hint,
+                  hintStyle: TextStyle(
                     fontSize: 12.5,
-                    color: Color(0xFF718096),
-                    fontWeight: FontWeight.w400,
+                    color: isPos ? const Color(0xFF276749) : const Color(0xFF742A2A),
+                    fontWeight: FontWeight.w600,
                   ),
                   prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF718096)),
                   suffixIcon: _searchQuery.isNotEmpty
@@ -222,11 +224,14 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
     );
   }
 
-  // ── Tab 0: Insights View (Exact Replica of Screenshot 1) ─────────
-  Widget _buildInsightsTab() {
-    final featuredStock = MockMarketData.allPsxStocks.firstWhere(
-      (s) => s.symbol == 'OGDC',
-      orElse: () => MockMarketData.allPsxStocks.first,
+  // ── Tab 0: Insights View with Live Moving Data ───────────────────
+  Widget _buildInsightsTab(MarketState marketState) {
+    final all = marketState.overview.allStocks.isNotEmpty
+        ? marketState.overview.allStocks
+        : MockMarketData.allPsxStocks;
+    final featuredStock = all.firstWhere(
+      (s) => s.symbol == 'SYS',
+      orElse: () => all.first,
     );
 
     return SingleChildScrollView(
@@ -249,7 +254,7 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
           ),
           const SizedBox(height: 10),
 
-          // 3. Featured Stock Card (OGDC with Sparkline + Sub-Ticker Pills)
+          // 3. Featured Stock Card (SYS / OGDC with Live Sparkline + Sub-Ticker Pills)
           _buildFeaturedStockCard(featuredStock),
 
           const SizedBox(height: 12),
@@ -770,8 +775,8 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
   }
 
   // ── Stock Lists Tab (Used for PSX Stocks, Gainers, Shariah, etc.) ─
-  Widget _buildStocksListTab(int tabIndex) {
-    final filtered = _getFilteredStocks(tabIndex);
+  Widget _buildStocksListTab(int tabIndex, MarketState marketState) {
+    final filtered = _getFilteredStocks(tabIndex, marketState);
 
     return Column(
       children: [
@@ -801,7 +806,7 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                       side: BorderSide(
-                        color: isSelected ? AppColors.primary.withOpacity(0.4) : const Color(0xFFE2E8F0),
+                        color: isSelected ? AppColors.primary.withValues(alpha: 0.4) : const Color(0xFFE2E8F0),
                       ),
                     ),
                   ),
@@ -826,6 +831,11 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
                   itemBuilder: (context, index) {
                     final stock = filtered[index];
                     final isPos = stock.changePercent >= 0;
+                    final flash = marketState.tickFlash[stock.symbol] ?? 0;
+                    final flashBg = flash == 1
+                        ? const Color(0xFFC6F6D5)
+                        : (flash == -1 ? const Color(0xFFFED7D7) : Colors.transparent);
+
                     return AppCard(
                       padding: const EdgeInsets.all(14),
                       onTap: () => context.go('/markets/stock/${stock.symbol}', extra: stock),
@@ -836,8 +846,8 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
                             height: 44,
                             decoration: BoxDecoration(
                               color: isPos
-                                  ? const Color(0xFF38A169).withOpacity(0.1)
-                                  : const Color(0xFFE53E3E).withOpacity(0.1),
+                                  ? const Color(0xFF38A169).withValues(alpha: 0.1)
+                                  : const Color(0xFFE53E3E).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Center(
@@ -881,16 +891,33 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
                               ],
                             ),
                           ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'Rs. ${stock.price.toStringAsFixed(2)}',
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-                              ),
-                              const SizedBox(height: 4),
-                              PriceChangeBadge(changePercent: stock.changePercent, isCompact: true),
-                            ],
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 400),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: flashBg,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (stock.tickDirection == 1)
+                                      const Icon(Icons.arrow_drop_up, color: Color(0xFF38A169), size: 16)
+                                    else if (stock.tickDirection == -1)
+                                      const Icon(Icons.arrow_drop_down, color: Color(0xFFE53E3E), size: 16),
+                                    Text(
+                                      'Rs. ${stock.price.toStringAsFixed(2)}',
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                PriceChangeBadge(changePercent: stock.changePercent, isCompact: true),
+                              ],
+                            ),
                           ),
                         ],
                       ),
