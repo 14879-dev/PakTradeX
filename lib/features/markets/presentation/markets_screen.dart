@@ -358,35 +358,50 @@ class _MarketsScreenState extends ConsumerState<MarketsScreen>
                 child: Column(
                   children: [
                     const Text(
-                      'PSX Bulls / Bears',
+                      'Bulls / Bears',
                       style: TextStyle(fontSize: 11, color: Color(0xFF718096), fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Text(
-                          '70.0',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF1A202C)),
-                        ),
-                        SizedBox(width: 6),
-                        Text(
-                          '30.0',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF718096)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    // Green / Red ratio bar
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(width: 40, height: 4, color: const Color(0xFF38A169)),
-                          Container(width: 18, height: 4, color: const Color(0xFFE53E3E)),
+                        children: const [
+                          Text(
+                            '70.0',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF1A202C)),
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '/',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Color(0xFFA0AEC0)),
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '30.0',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF718096)),
+                          ),
                         ],
                       ),
+                    ),
+                    const SizedBox(height: 6),
+                    // Green / Red ratio bar — use LayoutBuilder to fit column width
+                    LayoutBuilder(
+                      builder: (ctx, constraints) {
+                        final total = constraints.maxWidth.clamp(40.0, 80.0);
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(width: total * 0.70, height: 4, color: const Color(0xFF38A169)),
+                              Container(width: total * 0.30, height: 4, color: const Color(0xFFE53E3E)),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
