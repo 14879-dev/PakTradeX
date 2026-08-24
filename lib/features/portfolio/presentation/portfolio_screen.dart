@@ -8,11 +8,13 @@ import '../../../app/theme/app_typography.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../home/data/mock_market_data.dart';
+import '../../profile/providers/account_provider.dart';
 import '../../trading/providers/trading_provider.dart';
 import 'widgets/deposit_cash_modal.dart';
 import 'widgets/holdings_list.dart';
 import 'widgets/order_history_list.dart';
 import 'widgets/sector_allocation_pie_chart.dart';
+import 'widgets/withdraw_cash_modal.dart';
 
 class PortfolioScreen extends ConsumerStatefulWidget {
   const PortfolioScreen({super.key});
@@ -27,7 +29,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -45,23 +47,57 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
     );
   }
 
+  void _showWithdrawModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const WithdrawCashModal(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat('#,##0.00', 'en_US');
     final portfolio = ref.watch(tradingProvider);
+    final account = ref.watch(accountProvider);
     final isProfit = portfolio.totalUnrealizedPnl >= 0;
+
+    final isReal = account.isRealMode;
+    final totalValue = isReal ? (account.realBalance + portfolio.totalInvested) : (account.demoBalance + portfolio.totalInvested);
+    final availableCash = isReal ? account.realBalance : account.demoBalance;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(
-          'Investment Portfolio',
-          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
+        title: Row(
+          children: [
+            Text(
+              'Investment Assets',
+              style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: isReal ? const Color(0xFFC6F6D5) : const Color(0xFFEBF8FF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                isReal ? 'REAL PSX' : 'DEMO SANDBOX',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: isReal ? const Color(0xFF22543D) : const Color(0xFF2B6CB0),
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary),
-            tooltip: 'Deposit Demo Cash',
+            tooltip: 'Deposit Funds',
             onPressed: _showDepositModal,
           ),
           const SizedBox(width: 8),
@@ -74,7 +110,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
           children: [
             // Overall Portfolio Valuation Card
             AppCard(
-              backgroundColor: AppColors.navy,
+              backgroundColor: isReal ? const Color(0xFF1A365D) : AppColors.navy,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -82,7 +118,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Total Portfolio Value',
+                        isReal ? 'Real Portfolio Value (PKR)' : 'Demo Portfolio Value (PKR)',
                         style: AppTypography.bodySmall.copyWith(color: Colors.white70),
                       ),
                       Container(
@@ -92,7 +128,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
                           borderRadius: AppRadius.roundedSm,
                         ),
                         child: Text(
-                          'MAIN PORTFOLIO',
+                          isReal ? (account.isKycVerified ? 'SECP VERIFIED ✅' : 'KYC REQUIRED ⚠️') : '1M VIRTUAL FUNDS',
                           style: AppTypography.labelSmall.copyWith(
                             color: Colors.white,
                             fontSize: 10,
@@ -104,7 +140,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Rs. ${currency.format(portfolio.totalPortfolioValue)}',
+                    'Rs. ${currency.format(totalValue)}',
                     style: AppTypography.financialLarge.copyWith(
                       color: Colors.white,
                       fontSize: 26,
@@ -117,8 +153,8 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildWhiteStat('Invested Capital', 'Rs. ${currency.format(portfolio.totalInvested)}'),
-                      _buildWhiteStat('Available Cash', 'Rs. ${currency.format(portfolio.availableCash)}'),
+                      _buildWhiteStat('Invested Equities', 'Rs. ${currency.format(portfolio.totalInvested)}'),
+                      _buildWhiteStat('Available Cash', 'Rs. ${currency.format(availableCash)}'),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -147,38 +183,34 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
             ),
             const SizedBox(height: AppSpacing.md),
 
-            // Quick Actions Bar
+            // Quick Actions Bar (Deposit & Withdraw)
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _showDepositModal,
-                    icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
-                    label: const Text('Deposit Funds'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: const BorderSide(color: AppColors.primary),
-                      foregroundColor: AppColors.primary,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: AppRadius.roundedMd,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => context.go('/markets'),
-                    icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
-                    label: const Text('Trade Stocks'),
+                    onPressed: _showDepositModal,
+                    icon: const Icon(Icons.add_card_rounded, size: 18),
+                    label: const Text('Deposit Funds'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: AppRadius.roundedMd,
-                      ),
+                      shape: const RoundedRectangleBorder(borderRadius: AppRadius.roundedMd),
                       elevation: 0,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _showWithdrawModal,
+                    icon: const Icon(Icons.account_balance_rounded, size: 18),
+                    label: const Text('Withdraw Cash'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: const BorderSide(color: AppColors.primary),
+                      foregroundColor: AppColors.primary,
+                      shape: const RoundedRectangleBorder(borderRadius: AppRadius.roundedMd),
                     ),
                   ),
                 ),
@@ -192,12 +224,12 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
             AppCard(
               child: SectorAllocationPieChart(
                 holdings: portfolio.holdings,
-                availableCash: portfolio.availableCash,
+                availableCash: availableCash,
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            // Tab Bar for Holdings & Order History
+            // Tab Bar for Holdings, Order History, Transactions
             Container(
               decoration: BoxDecoration(
                 color: AppColors.surface,
@@ -213,7 +245,8 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
                 labelStyle: AppTypography.labelLarge,
                 tabs: [
                   Tab(text: 'Holdings (${portfolio.holdings.length})'),
-                  Tab(text: 'Order History (${portfolio.orders.length})'),
+                  Tab(text: 'Orders (${portfolio.orders.length})'),
+                  Tab(text: 'Ledger (${account.transactionHistory.length})'),
                 ],
               ),
             ),
@@ -234,8 +267,10 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
                       context.go('/home/stock/${holding.symbol}', extra: quote);
                     },
                   );
-                } else {
+                } else if (_tabController.index == 1) {
                   return OrderHistoryList(orders: portfolio.orders);
+                } else {
+                  return _buildTransactionLedgerList(account, currency);
                 }
               },
             ),
@@ -243,6 +278,84 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen> with SingleTi
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTransactionLedgerList(AccountState account, NumberFormat currency) {
+    if (account.transactionHistory.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 32),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.receipt_long_outlined, size: 40, color: Color(0xFFA0AEC0)),
+              SizedBox(height: 8),
+              Text(
+                'No deposit or withdrawal transactions yet.',
+                style: TextStyle(color: Color(0xFF718096), fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: account.transactionHistory.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final txn = account.transactionHistory[index];
+        final isDeposit = txn.type == 'deposit';
+
+        return AppCard(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDeposit
+                      ? const Color(0xFF38A169).withValues(alpha: 0.12)
+                      : const Color(0xFFE53E3E).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  isDeposit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                  color: isDeposit ? const Color(0xFF38A169) : const Color(0xFFE53E3E),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      txn.title,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${txn.timestamp.hour.toString().padLeft(2, '0')}:${txn.timestamp.minute.toString().padLeft(2, '0')} · ${txn.status}',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF718096)),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${isDeposit ? '+' : '-'}Rs. ${currency.format(txn.amount)}',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: isDeposit ? const Color(0xFF38A169) : const Color(0xFFE53E3E),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

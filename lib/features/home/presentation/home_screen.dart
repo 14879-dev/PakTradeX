@@ -226,75 +226,31 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
         ),
-        // Center: Exchange / Wallet Toggle or Demo Switcher
-        title: Container(
-          height: 34,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEDF2F7),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                onTap: () => ref.read(accountProvider.notifier).switchMode(AccountMode.demo),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: account.isDemoMode ? Colors.white : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: account.isDemoMode
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Text(
-                    'Demo 1M',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: account.isDemoMode ? FontWeight.w800 : FontWeight.w600,
-                      color: account.isDemoMode ? AppColors.primary : const Color(0xFF718096),
-                    ),
-                  ),
-                ),
+        // Center: App Title & Branding
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(8),
               ),
-              GestureDetector(
-                onTap: () => ref.read(accountProvider.notifier).switchMode(AccountMode.real),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: account.isRealMode ? Colors.white : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: account.isRealMode
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Text(
-                    'Real PSX',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: account.isRealMode ? FontWeight.w800 : FontWeight.w600,
-                      color: account.isRealMode ? AppColors.success : const Color(0xFF718096),
-                    ),
-                  ),
-                ),
+              child: const Icon(Icons.show_chart_rounded, color: AppColors.primary, size: 18),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'PakTradeX',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1A202C),
+                letterSpacing: -0.3,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        centerTitle: true,
+        centerTitle: false,
         // Right Action Icons: Direct Pay (Scan), Support, Notification
         actions: [
           // Direct Pay / Scan QR

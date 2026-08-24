@@ -3,17 +3,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 enum AccountMode { demo, real }
 enum KycStatus { unverified, inReview, verified }
 
+class TransactionRecord {
+  final String id;
+  final String title;
+  final String type; // 'deposit', 'withdrawal', 'trade', 'p2p'
+  final double amount;
+  final String status;
+  final DateTime timestamp;
+  final String? paymentMethod;
+  final String? reference;
+
+  const TransactionRecord({
+    required this.id,
+    required this.title,
+    required this.type,
+    required this.amount,
+    required this.status,
+    required this.timestamp,
+    this.paymentMethod,
+    this.reference,
+  });
+}
+
 class AccountState {
   final AccountMode mode;
   final String pakTradeId;
   final KycStatus kycStatus;
-  final double realBalance;
-  final double demoBalance;
+  final double realBalance; // Starts at 0.0 before real deposit!
+  final double demoBalance; // 1,000,000 for demo practice
   final String userName;
   final String phoneNumber;
   final String cnicNumber;
   final String bankName;
   final String accountNumber;
+  final List<TransactionRecord> transactionHistory;
   final List<P2pTransferRecord> transferHistory;
 
   const AccountState({
@@ -27,6 +50,7 @@ class AccountState {
     required this.cnicNumber,
     required this.bankName,
     required this.accountNumber,
+    required this.transactionHistory,
     required this.transferHistory,
   });
 
@@ -47,6 +71,7 @@ class AccountState {
     String? cnicNumber,
     String? bankName,
     String? accountNumber,
+    List<TransactionRecord>? transactionHistory,
     List<P2pTransferRecord>? transferHistory,
   }) {
     return AccountState(
@@ -60,6 +85,7 @@ class AccountState {
       cnicNumber: cnicNumber ?? this.cnicNumber,
       bankName: bankName ?? this.bankName,
       accountNumber: accountNumber ?? this.accountNumber,
+      transactionHistory: transactionHistory ?? this.transactionHistory,
       transferHistory: transferHistory ?? this.transferHistory,
     );
   }
@@ -92,13 +118,14 @@ class AccountNotifier extends StateNotifier<AccountState> {
             mode: AccountMode.demo,
             pakTradeId: 'PTX-148790',
             kycStatus: KycStatus.unverified,
-            realBalance: 50000.0,
+            realBalance: 0.0, // Clean 0.0 real balance before deposit
             demoBalance: 1000000.0,
-            userName: 'Syed Ali Raza',
-            phoneNumber: '+92 300 8492014',
-            cnicNumber: '42101-9284102-1',
-            bankName: 'Meezan Bank Ltd',
-            accountNumber: 'PK42MEZN0001928491028301',
+            userName: 'Mudassir Munir',
+            phoneNumber: '',
+            cnicNumber: '',
+            bankName: '',
+            accountNumber: '',
+            transactionHistory: [],
             transferHistory: [],
           ),
         );
@@ -128,18 +155,56 @@ class AccountNotifier extends StateNotifier<AccountState> {
     );
   }
 
-  void depositRealFunds(double amount) {
+  bool depositRealFunds({
+    required double amount,
+    required String paymentMethod,
+    String? reference,
+  }) {
+    if (amount <= 0) return false;
+    final txn = TransactionRecord(
+      id: 'DEP-${DateTime.now().millisecondsSinceEpoch}',
+      title: 'Deposit via $paymentMethod',
+      type: 'deposit',
+      amount: amount,
+      status: 'Completed',
+      timestamp: DateTime.now(),
+      paymentMethod: paymentMethod,
+      reference: reference ?? 'RAAST-DIRECT-${DateTime.now().millisecondsSinceEpoch % 1000000}',
+    );
+
     state = state.copyWith(
       realBalance: state.realBalance + amount,
+      transactionHistory: [txn, ...state.transactionHistory],
     );
+    return true;
   }
 
-  void withdrawRealFunds(double amount) {
-    if (state.realBalance >= amount) {
-      state = state.copyWith(
-        realBalance: state.realBalance - amount,
-      );
-    }
+  bool withdrawRealFunds({
+    required double amount,
+    required String destinationBank,
+    required String iban,
+  }) {
+    if (amount <= 0 || state.realBalance < amount) return false;
+    final txn = TransactionRecord(
+      id: 'WTH-${DateTime.now().millisecondsSinceEpoch}',
+      title: 'Withdrawal to $destinationBank',
+      type: 'withdrawal',
+      amount: amount,
+      status: 'Completed',
+      timestamp: DateTime.now(),
+      paymentMethod: destinationBank,
+      reference: iban,
+    );
+
+    state = state.copyWith(
+      realBalance: state.realBalance - amount,
+      transactionHistory: [txn, ...state.transactionHistory],
+    );
+    return true;
+  }
+
+  void resetDemoFunds() {
+    state = state.copyWith(demoBalance: 1000000.0);
   }
 
   bool sendP2pTransfer({

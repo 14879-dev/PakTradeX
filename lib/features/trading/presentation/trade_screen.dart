@@ -5,7 +5,10 @@ import 'package:intl/intl.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../home/data/mock_market_data.dart';
 import '../../home/models/market_data_models.dart';
+import '../../markets/providers/market_provider.dart';
 import '../../portfolio/presentation/widgets/deposit_cash_modal.dart';
+import '../../profile/presentation/widgets/kyc_verification_modal.dart';
+import '../../profile/providers/account_provider.dart';
 import '../../stock_details/presentation/widgets/interactive_stock_chart.dart';
 import '../models/trading_models.dart';
 import '../providers/trading_provider.dart';
@@ -20,13 +23,13 @@ class TradeScreen extends ConsumerStatefulWidget {
 class _TradeScreenState extends ConsumerState<TradeScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _subTabController;
-  String _selectedSymbol = 'MCB';
+  String _selectedSymbol = 'SYS';
   OrderSide _orderSide = OrderSide.buy;
   OrderType _orderType = OrderType.market;
   bool _isTotalMode = true; // Total (PKR) or Amount (Shares)
 
   final _amountController = TextEditingController(text: '10000');
-  final _limitPriceController = TextEditingController(text: '322.40');
+  final _limitPriceController = TextEditingController(text: '462.90');
 
   double _sliderPercent = 0.25; // 0, 0.25, 0.50, 0.75, 1.0
   bool _isExecuting = false;
@@ -55,10 +58,13 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
     super.dispose();
   }
 
-  StockQuote get _currentStock {
-    return MockMarketData.allPsxStocks.firstWhere(
+  StockQuote _getStock(MarketState marketState) {
+    final list = marketState.overview.allStocks.isNotEmpty
+        ? marketState.overview.allStocks
+        : MockMarketData.allPsxStocks;
+    return list.firstWhere(
       (s) => s.symbol == _selectedSymbol,
-      orElse: () => MockMarketData.allPsxStocks.first,
+      orElse: () => list.first,
     );
   }
 
@@ -160,21 +166,21 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
     );
   }
 
-  void _onSliderChanged(double val, double maxBudget) {
+  void _onSliderChanged(double val, double maxBudget, double stockPrice) {
     setState(() {
       _sliderPercent = val;
       final allocated = maxBudget * val;
       if (_isTotalMode) {
         _amountController.text = allocated.toStringAsFixed(0);
       } else {
-        final shares = (allocated / _currentStock.price).floor();
+        final shares = (allocated / (stockPrice > 0 ? stockPrice : 100)).floor();
         _amountController.text = shares.toString();
       }
     });
   }
 
-  Future<void> _handleExecuteTrade() async {
-    final stock = _currentStock;
+  Future<void> _handleExecuteTrade(StockQuote stock) async {
+    final account = ref.read(accountProvider);
     final numVal = double.tryParse(_amountController.text) ?? 0;
     if (numVal <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -184,12 +190,49 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
     }
 
     final int quantity = _isTotalMode
-        ? (numVal / stock.price).floor().clamp(1, 999999)
+        ? (numVal / (stock.price > 0 ? stock.price : 100)).floor().clamp(1, 999999)
         : numVal.toInt();
 
     final price = _orderType == OrderType.limit
         ? (double.tryParse(_limitPriceController.text) ?? stock.price)
         : stock.price;
+
+    final totalCost = price * quantity;
+
+    // Real Mode KYC & Balance Protection
+    if (account.isRealMode) {
+      if (!account.isKycVerified) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Color(0xFFD69E2E),
+            content: Text('1-Time SECP KYC Verification Required before trading in Real mode.'),
+          ),
+        );
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => const KycVerificationModal(),
+        );
+        return;
+      }
+
+      if (_orderSide == OrderSide.buy && account.realBalance < totalCost) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFE53E3E),
+            content: Text('Insufficient real balance (Rs. ${account.realBalance.toStringAsFixed(2)}). Please deposit funds.'),
+          ),
+        );
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => const DepositCashModal(),
+        );
+        return;
+      }
+    }
 
     setState(() => _isExecuting = true);
     HapticFeedback.mediumImpact();
@@ -235,19 +278,22 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat('#,##0.00', 'en_US');
-    final stock = _currentStock;
+    final marketState = ref.watch(marketProvider);
+    final account = ref.watch(accountProvider);
+    final stock = _getStock(marketState);
     final portfolio = ref.watch(tradingProvider);
     final isBuy = _orderSide == OrderSide.buy;
+    final availableCash = account.isRealMode ? account.realBalance : account.demoBalance;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // 1. Top Sub-Navigation Tabs Bar (RealStocks [NEW], Spot, Futures, Predictions)
-            _buildTopSubTabsBar(),
+            // 1. Top Sub-Navigation Tabs Bar
+            _buildTopSubTabsBar(account),
 
-            // 2. Asset Header (LINK/USDT ▼, Price, 300X, Chart, Menu)
+            // 2. Asset Header
             _buildAssetHeader(stock),
 
             const Divider(height: 1, color: Color(0xFFE2E8F0)),
@@ -266,7 +312,7 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
                           // Left Column: Buy/Sell, Order Type, Price, Amount, Slider, Buy Button
                           Expanded(
                             flex: 56,
-                            child: _buildLeftTradingControls(stock, portfolio, currency),
+                            child: _buildLeftTradingControls(stock, portfolio, availableCash, currency),
                           ),
 
                           const SizedBox(width: 14),
@@ -280,12 +326,12 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
                       ),
                     ),
 
-                    // 4. Promo Banner (e.g. $1,000,000 Gala with close ✕)
+                    // 4. Promo Banner
                     if (_showPromoBanner) _buildGalaPromoBanner(),
 
                     const SizedBox(height: 8),
 
-                    // 5. Bottom Order Management (Open Orders (0), Positions (1), Strategies (0))
+                    // 5. Bottom Order Management
                     _buildOrderManagementSection(portfolio, currency),
 
                     const SizedBox(height: 14),
@@ -304,8 +350,8 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
     );
   }
 
-  // ── 1. Top Sub-Tabs Bar (Matching Screenshot 2 - Overflow-Proof) ───
-  Widget _buildTopSubTabsBar() {
+  // ── 1. Top Sub-Tabs Bar with Live Real / Demo Account Mode Badge ───
+  Widget _buildTopSubTabsBar(AccountState account) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -313,6 +359,23 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
+            // Mode Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: account.isRealMode ? const Color(0xFFC6F6D5) : const Color(0xFFEBF8FF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                account.isRealMode ? 'REAL PSX' : 'DEMO 1M',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: account.isRealMode ? const Color(0xFF22543D) : const Color(0xFF2B6CB0),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
             // RealStocks with blue NEW badge
             Stack(
               clipBehavior: Clip.none,
@@ -352,16 +415,6 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
             const Text(
               'Predictions',
               style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500, color: Color(0xFF718096)),
-            ),
-            const SizedBox(width: 20),
-            Row(
-              children: const [
-                Text('🏆 ', style: TextStyle(fontSize: 13)),
-                Text(
-                  'Join',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF3182CE)),
-                ),
-              ],
             ),
           ],
         ),
@@ -462,9 +515,8 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
   }
 
   // ── 3. Left Column: Trade Inputs ─────────────────────────────────
-  Widget _buildLeftTradingControls(StockQuote stock, dynamic portfolio, NumberFormat currency) {
+  Widget _buildLeftTradingControls(StockQuote stock, dynamic portfolio, double availableCash, NumberFormat currency) {
     final isBuy = _orderSide == OrderSide.buy;
-    final availableCash = portfolio.availableCash as double;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,9 +616,9 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
             borderRadius: BorderRadius.circular(6),
           ),
           child: _orderType == OrderType.market
-              ? const Text(
-                  'Market Price',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF718096)),
+              ? Text(
+                  'Market Price ≈ Rs. ${stock.price.toStringAsFixed(2)}',
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF4A5568)),
                 )
               : TextField(
                   controller: _limitPriceController,
@@ -679,7 +731,7 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
           child: Slider(
             value: _sliderPercent,
             divisions: 4,
-            onChanged: (val) => _onSliderChanged(val, availableCash),
+            onChanged: (val) => _onSliderChanged(val, availableCash, stock.price),
           ),
         ),
         const SizedBox(height: 6),
@@ -721,12 +773,12 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
         ),
         const SizedBox(height: 14),
 
-        // Huge Action Button: Buy MCB (Green) / Sell MCB (Red)
+        // Huge Action Button: Buy / Sell Stock
         SizedBox(
           width: double.infinity,
           height: 44,
           child: ElevatedButton(
-            onPressed: _isExecuting ? null : _handleExecuteTrade,
+            onPressed: _isExecuting ? null : () => _handleExecuteTrade(stock),
             style: ElevatedButton.styleFrom(
               backgroundColor: isBuy ? const Color(0xFF38A169) : const Color(0xFFE53E3E),
               foregroundColor: Colors.white,
