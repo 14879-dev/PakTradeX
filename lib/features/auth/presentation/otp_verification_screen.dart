@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_colors.dart';
@@ -18,8 +19,8 @@ class OtpVerificationScreen extends ConsumerStatefulWidget {
 }
 
 class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
-  final List<TextEditingController> _controllers = List.generate(6, (index) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
+  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   int _secondsRemaining = 60;
   Timer? _timer;
   bool _isLoading = false;
@@ -28,6 +29,10 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   void initState() {
     super.initState();
     _startTimer();
+    // Auto-focus first box after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNodes[0].requestFocus();
+    });
   }
 
   void _startTimer() {
@@ -54,18 +59,105 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     super.dispose();
   }
 
-  String get _otpCode => _controllers.map((c) => c.text).join();
+  String get _otpCode => _controllers.map((c) => c.text.trim()).join();
+
+  void _fillFromCode(String code) {
+    final cleanDigits = code.replaceAll(RegExp(r'\D'), '');
+    for (int i = 0; i < 6; i++) {
+      if (i < cleanDigits.length) {
+        _controllers[i].text = cleanDigits[i];
+      } else {
+        _controllers[i].clear();
+      }
+    }
+    setState(() {});
+    if (cleanDigits.length >= 6) {
+      _focusNodes[5].unfocus();
+      _handleVerify();
+    } else if (cleanDigits.isNotEmpty) {
+      final nextIndex = cleanDigits.length.clamp(0, 5);
+      _focusNodes[nextIndex].requestFocus();
+    }
+  }
+
+  Future<void> _pasteFromClipboard() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim() ?? '';
+    if (text.isNotEmpty) {
+      _fillFromCode(text);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Pasted code: ${_otpCode.padRight(6, '•')}'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Clipboard is empty')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleVerify() async {
+    final code = _otpCode;
+    if (code.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter all 6 digits of the code')),
+      );
+      return;
+    }
+
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+    final success = await ref.read(authProvider.notifier).verifyOtp(code);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (success) {
+      context.go('/home');
+    } else {
+      final errorMsg = ref.read(authProvider).errorMessage ??
+          'Invalid verification code. Please check and try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final emailTarget = widget.target.isEmpty
+        ? (ref.watch(authProvider).pendingEmailOrPhone ?? 'your registered email')
+        : widget.target;
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
         ),
+        actions: [
+          TextButton.icon(
+            onPressed: _pasteFromClipboard,
+            icon: const Icon(Icons.content_paste_rounded, size: 16, color: AppColors.primary),
+            label: const Text(
+              'Paste',
+              style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -77,17 +169,17 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                 'Verify Security Code',
                 style: AppTypography.displayMedium.copyWith(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               RichText(
                 text: TextSpan(
                   text: 'We sent a 6-digit authentication code to\n',
                   style: AppTypography.bodyMedium,
                   children: [
                     TextSpan(
-                      text: widget.target.isEmpty ? 'your registered email/phone' : widget.target,
+                      text: emailTarget,
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: AppColors.primary,
                       ),
                     ),
                   ],
@@ -95,22 +187,22 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
               ),
               const SizedBox(height: AppSpacing.xxl),
 
-              // 6 PIN Input boxes
+              // 6 PIN Input boxes with multi-digit paste interceptor
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: List.generate(6, (index) {
                   return SizedBox(
-                    width: 46,
-                    height: 54,
+                    width: 48,
+                    height: 56,
                     child: TextField(
                       controller: _controllers[index],
                       focusNode: _focusNodes[index],
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
-                      maxLength: 1,
                       style: AppTypography.financialLarge.copyWith(
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w900,
                         color: AppColors.primary,
+                        fontSize: 22,
                       ),
                       decoration: InputDecoration(
                         counterText: '',
@@ -121,14 +213,36 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                           borderRadius: AppRadius.roundedMd,
                           borderSide: const BorderSide(color: AppColors.border),
                         ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: AppRadius.roundedMd,
+                          borderSide: BorderSide(
+                            color: _controllers[index].text.isNotEmpty
+                                ? AppColors.primary.withValues(alpha: 0.5)
+                                : AppColors.border,
+                          ),
+                        ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: AppRadius.roundedMd,
                           borderSide: const BorderSide(color: AppColors.primary, width: 2),
                         ),
                       ),
                       onChanged: (value) {
-                        if (value.isNotEmpty && index < 5) {
-                          _focusNodes[index + 1].requestFocus();
+                        // If pasted multiple digits into any single box
+                        if (value.length > 1) {
+                          _fillFromCode(value);
+                          return;
+                        }
+
+                        if (value.isNotEmpty) {
+                          if (index < 5) {
+                            _focusNodes[index + 1].requestFocus();
+                          } else {
+                            _focusNodes[index].unfocus();
+                            // All 6 filled -> AUTO-VERIFY IMMEDIATELY
+                            if (_otpCode.length == 6) {
+                              _handleVerify();
+                            }
+                          }
                         } else if (value.isEmpty && index > 0) {
                           _focusNodes[index - 1].requestFocus();
                         }
@@ -137,36 +251,43 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                   );
                 }),
               ),
+              const SizedBox(height: 14),
+
+              // Quick Paste Shortcut Bar
+              InkWell(
+                onTap: _pasteFromClipboard,
+                borderRadius: AppRadius.roundedSm,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: AppRadius.roundedSm,
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.content_paste_rounded, size: 14, color: AppColors.primary),
+                      SizedBox(width: 6),
+                      Text(
+                        'Tap here to paste full 6-digit code',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: AppSpacing.xxl),
 
               // Verify Button
               PrimaryButton(
                 label: 'Verify & Continue',
                 isLoading: _isLoading,
-                onPressed: () async {
-                  if (_otpCode.length == 6) {
-                    setState(() => _isLoading = true);
-                    final success = await ref.read(authProvider.notifier).verifyOtp(_otpCode);
-                    if (!context.mounted) return;
-                    setState(() => _isLoading = false);
-
-                    if (success) {
-                      context.go('/home');
-                    } else {
-                      final errorMsg = ref.read(authProvider).errorMessage ?? 'Invalid verification code. Please check and try again.';
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(errorMsg),
-                          backgroundColor: AppColors.danger,
-                        ),
-                      );
-                    }
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter all 6 digits of the code')),
-                    );
-                  }
-                },
+                onPressed: _handleVerify,
               ),
               const SizedBox(height: AppSpacing.lg),
 
@@ -195,3 +316,4 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     );
   }
 }
+
