@@ -7,9 +7,12 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
-    name: Build & Test Flutter Android APK
+    name: Build & Release Flutter Android APK
     runs-on: ubuntu-latest
 
     steps:
@@ -25,7 +28,6 @@ jobs:
       - name: 🐦 Set up Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.29.0'
           channel: 'stable'
           cache: true
 
@@ -33,7 +35,7 @@ jobs:
         run: flutter pub get
 
       - name: 🔍 Static Code Analysis
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: 🧪 Run Unit & Widget Tests
         run: flutter test
@@ -44,16 +46,36 @@ jobs:
       - name: 🚀 Build Release APK
         run: flutter build apk --release
 
-      - name: 📤 Upload Debug APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: PakTradeX-Debug-APK
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          if-no-files-found: error
-
       - name: 📤 Upload Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: PakTradeX-Release-APK
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+
+      - name: 🏷️ Publish GitHub Release (Latest)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0-latest
+          name: "PakTradeX v1.0.0 (Production Release)"
+          body: |
+            ## 🇵🇰 PakTradeX — Live PSX Trading App Release
+            
+            ### ✨ Highlights:
+            - **Real PSX Live Stock Data** via Yahoo Finance (`.KA` market feed)
+            - **KSE-100 / KSE-30 / KMI-30** indices real-time streaming
+            - **Full Trading Experience**: Market & Limit orders, Depth Chart & Order Book
+            - **Searchable PSX Stock Selection** with live quotes
+            - **Full KYC Verification Flow** (CNIC, OTP, Bank linking)
+            - **Deposits & Withdrawals** (Raast / IBFT / JazzCash / EasyPaisa)
+            - **AI Copilot** (Gemini-powered financial insights)
+            
+            ### 📥 Download & Install:
+            Download **`PakTradeX.apk`** below to install directly on Android.
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

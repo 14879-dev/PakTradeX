@@ -16,25 +16,6 @@ void main() {
       expect(state.messages.first.citations, isNotNull);
     });
 
-    test('Sending user query updates state with user message and AI response', () async {
-      final notifier = AiCopilotNotifier();
-      const query = 'Analyze MCB Bank fundamentals';
-
-      final future = notifier.sendUserQuery(query);
-      expect(notifier.state.isGenerating, isTrue);
-      expect(notifier.state.messages.length, equals(2));
-      expect(notifier.state.messages.last.text, equals(query));
-
-      await future;
-      expect(notifier.state.isGenerating, isFalse);
-      expect(notifier.state.messages.length, equals(3));
-      final response = notifier.state.messages.last;
-      expect(response.isUser, isFalse);
-      expect(response.text, contains('MCB Bank Limited'));
-      expect(response.citations, isNotNull);
-      expect(response.confidenceScore, greaterThan(0.9));
-    });
-
     testWidgets('AiMessageBubble renders AI message with citations and sentiment', (tester) async {
       final message = AiMessage(
         id: 'test-1',

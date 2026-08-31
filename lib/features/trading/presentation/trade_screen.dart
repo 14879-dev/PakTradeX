@@ -69,102 +69,163 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
   }
 
   void _openStockPickerModal() {
-    // Snapshot the live stock list at open-time; falls back to updated mock prices
     final liveStocks = ref.read(marketProvider).overview.allStocks.isNotEmpty
         ? ref.read(marketProvider).overview.allStocks
         : MockMarketData.allPsxStocks;
+    String searchQuery = '';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filteredStocks = liveStocks.where((s) {
+              final q = searchQuery.toLowerCase().trim();
+              if (q.isEmpty) return true;
+              return s.symbol.toLowerCase().contains(q) ||
+                  s.name.toLowerCase().contains(q) ||
+                  s.sector.toLowerCase().contains(q);
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Select PSX Stock',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 10, bottom: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(context),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Select PSX Stock',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: liveStocks.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final stock = liveStocks[index];
-                    final isSelected = stock.symbol == _selectedSymbol;
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      title: Text(
-                        '${stock.symbol}/PKR',
-                        style: TextStyle(
-                          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                          color: isSelected ? AppColors.primary : const Color(0xFF1A202C),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: TextField(
+                      autofocus: false,
+                      decoration: InputDecoration(
+                        hintText: 'Search stock symbol, name or sector...',
+                        hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                        prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFF64748B)),
+                        suffixIcon: searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear_rounded, size: 18),
+                                onPressed: () {
+                                  setModalState(() {
+                                    searchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                         ),
                       ),
-                      subtitle: Text(
-                        stock.name,
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF718096)),
-                      ),
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Rs. ${stock.price.toStringAsFixed(2)}',
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${stock.changePercent >= 0 ? "+" : ""}${stock.changePercent.toStringAsFixed(2)}%',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: stock.changePercent >= 0 ? const Color(0xFF38A169) : const Color(0xFFE53E3E),
-                            ),
-                          ),
-                        ],
-                      ),
-                      onTap: () {
-                        setState(() {
-                          _selectedSymbol = stock.symbol;
-                          _limitPriceController.text = stock.price.toStringAsFixed(2);
+                      onChanged: (val) {
+                        setModalState(() {
+                          searchQuery = val;
                         });
-                        Navigator.pop(context);
                       },
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: filteredStocks.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No stocks match your search',
+                              style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: filteredStocks.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final stock = filteredStocks[index];
+                              final isSelected = stock.symbol == _selectedSymbol;
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                title: Text(
+                                  '${stock.symbol}/PKR',
+                                  style: TextStyle(
+                                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                                    color: isSelected ? AppColors.primary : const Color(0xFF1A202C),
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  stock.name,
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF718096)),
+                                ),
+                                trailing: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'Rs. ${stock.price.toStringAsFixed(2)}',
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${stock.changePercent >= 0 ? "+" : ""}${stock.changePercent.toStringAsFixed(2)}%',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: stock.changePercent >= 0 ? const Color(0xFF38A169) : const Color(0xFFE53E3E),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                onTap: () {
+                                  setState(() {
+                                    _selectedSymbol = stock.symbol;
+                                    _limitPriceController.text = stock.price.toStringAsFixed(2);
+                                  });
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

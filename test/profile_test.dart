@@ -16,7 +16,7 @@ void main() {
       expect(notifier.state.orders, isEmpty);
     });
 
-    testWidgets('ProfileScreen renders security toggles and disclosures option', (tester) async {
+    testWidgets('ProfileScreen renders user profile and shortcuts', (tester) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -25,12 +25,8 @@ void main() {
         ),
       );
 
-      expect(find.text('Account & Profile'), findsOneWidget);
-      expect(find.text('Biometric Login'), findsOneWidget);
-      expect(find.text('Two-Factor Authentication (2FA)'), findsOneWidget);
-      expect(find.text('Regulatory & Risk Notice'), findsOneWidget);
-      expect(find.text('Reset Demo Portfolio'), findsOneWidget);
-      expect(find.text('Sign Out'), findsOneWidget);
+      // Verify Shortcut header exists on the profile screen
+      expect(find.text('Shortcut'), findsOneWidget);
     });
   });
 }

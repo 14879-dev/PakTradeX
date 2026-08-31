@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:paktradex/features/portfolio/presentation/portfolio_screen.dart';
-import 'package:paktradex/features/portfolio/presentation/widgets/deposit_cash_modal.dart';
 import 'package:paktradex/features/portfolio/presentation/widgets/holdings_list.dart';
 import 'package:paktradex/features/portfolio/presentation/widgets/order_history_list.dart';
-import 'package:paktradex/features/portfolio/presentation/widgets/sector_allocation_pie_chart.dart';
 import 'package:paktradex/features/trading/models/trading_models.dart';
 import 'package:paktradex/features/trading/providers/trading_provider.dart';
 

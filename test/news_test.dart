@@ -1,7 +1,4 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:paktradex/features/news/models/news_item.dart';
-import 'package:paktradex/features/news/presentation/news_detail_screen.dart';
 import 'package:paktradex/features/news/providers/news_provider.dart';
 
 void main() {
