@@ -69,6 +69,10 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
   }
 
   void _openStockPickerModal() {
+    // Snapshot the live stock list at open-time; falls back to updated mock prices
+    final liveStocks = ref.read(marketProvider).overview.allStocks.isNotEmpty
+        ? ref.read(marketProvider).overview.allStocks
+        : MockMarketData.allPsxStocks;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -111,10 +115,10 @@ class _TradeScreenState extends ConsumerState<TradeScreen>
               Expanded(
                 child: ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: MockMarketData.allPsxStocks.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemCount: liveStocks.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
-                    final stock = MockMarketData.allPsxStocks[index];
+                    final stock = liveStocks[index];
                     final isSelected = stock.symbol == _selectedSymbol;
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
