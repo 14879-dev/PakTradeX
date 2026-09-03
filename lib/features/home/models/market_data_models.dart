@@ -92,6 +92,48 @@ class StockQuote {
     );
   }
 
+  double get previousClose => price - change;
+
+  StockQuote copyWith({
+    String? symbol,
+    String? name,
+    String? sector,
+    double? price,
+    double? change,
+    double? changePercent,
+    double? volume,
+    double? marketCap,
+    double? peRatio,
+    double? dividendYield,
+    bool? isShariah,
+    List<double>? sparkline,
+    double? high,
+    double? low,
+    int? tickDirection,
+    bool? isLive,
+    String? fetchedAt,
+  }) {
+    return StockQuote(
+      symbol: symbol ?? this.symbol,
+      name: name ?? this.name,
+      sector: sector ?? this.sector,
+      price: price ?? this.price,
+      change: change ?? this.change,
+      changePercent: changePercent ?? this.changePercent,
+      volume: volume ?? this.volume,
+      marketCap: marketCap ?? this.marketCap,
+      peRatio: peRatio ?? this.peRatio,
+      dividendYield: dividendYield ?? this.dividendYield,
+      isShariah: isShariah ?? this.isShariah,
+      sparkline: sparkline ?? this.sparkline,
+      high: high ?? this.high,
+      low: low ?? this.low,
+      tickDirection: tickDirection ?? this.tickDirection,
+      isLive: isLive ?? this.isLive,
+      fetchedAt: fetchedAt ?? this.fetchedAt,
+    );
+  }
+
   static StockQuote mock(String symbol) => StockQuote(
         symbol: symbol,
         name: '$symbol Limited',

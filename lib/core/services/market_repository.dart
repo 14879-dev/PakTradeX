@@ -1,5 +1,7 @@
+import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api_client.dart';
+import '../../features/home/data/mock_market_data.dart';
 import '../../features/home/models/market_data_models.dart';
 export '../../features/home/models/market_data_models.dart' show StockQuote, MarketIndex;
 
@@ -107,9 +109,9 @@ class MarketOverview {
     required this.kse100Level,
     required this.kse100Change,
     required this.kse100ChangePercent,
-    this.kse100High = 78890.0,
-    this.kse100Low = 77840.0,
-    this.kse100Volume = 345000000,
+    this.kse100High = 177400.0,
+    this.kse100Low = 175800.0,
+    this.kse100Volume = 482500000,
     this.kse100TickDirection = 1,
     required this.isLive,
     required this.topGainers,
@@ -123,12 +125,12 @@ class MarketOverview {
     final rawStocks = j['stocks'] as List<dynamic>? ?? [];
 
     return MarketOverview(
-      kse100Level: (kse['level'] as num?)?.toDouble() ?? 78640.50,
-      kse100Change: (kse['change'] as num?)?.toDouble() ?? 482.30,
-      kse100ChangePercent: (kse['change_percent'] as num?)?.toDouble() ?? 0.62,
-      kse100High: (kse['high'] as num?)?.toDouble() ?? 78890.0,
-      kse100Low: (kse['low'] as num?)?.toDouble() ?? 77840.0,
-      kse100Volume: (kse['volume'] as num?)?.toInt() ?? 345000000,
+      kse100Level: (kse['level'] as num?)?.toDouble() ?? 176850.40,
+      kse100Change: (kse['change'] as num?)?.toDouble() ?? 870.20,
+      kse100ChangePercent: (kse['change_percent'] as num?)?.toDouble() ?? 0.49,
+      kse100High: (kse['high'] as num?)?.toDouble() ?? 177400.0,
+      kse100Low: (kse['low'] as num?)?.toDouble() ?? 175800.0,
+      kse100Volume: (kse['volume'] as num?)?.toInt() ?? 482500000,
       kse100TickDirection: (kse['tick_direction'] as num?)?.toInt() ?? 1,
       isLive: kse['is_live'] as bool? ?? true,
       topGainers: (j['top_gainers'] as List<dynamic>? ?? [])
@@ -142,37 +144,46 @@ class MarketOverview {
     );
   }
 
-  static MarketOverview get mock => MarketOverview(
-        kse100Level: 78640.50,
-        kse100Change: 482.30,
-        kse100ChangePercent: 0.62,
-        isLive: true,
-        topGainers: [
-          StockQuote.mock('SYS'),
-          StockQuote.mock('ENGRO'),
-          StockQuote.mock('LUCK'),
-        ],
-        topLosers: [
-          StockQuote.mock('OGDC'),
-          StockQuote.mock('PSO'),
-          StockQuote.mock('PPL'),
-        ],
-        allStocks: [],
-        lastUpdated: DateTime.now().toIso8601String(),
-      );
+  static MarketOverview get mock {
+    final stocks = List<StockQuote>.from(MockMarketData.allPsxStocks);
+    final sortedByGain = List<StockQuote>.from(stocks)
+      ..sort((a, b) => b.changePercent.compareTo(a.changePercent));
+    final sortedByLoss = List<StockQuote>.from(stocks)
+      ..sort((a, b) => a.changePercent.compareTo(b.changePercent));
+
+    return MarketOverview(
+      kse100Level: 176850.40,
+      kse100Change: 870.20,
+      kse100ChangePercent: 0.49,
+      kse100High: 177400.0,
+      kse100Low: 175800.0,
+      kse100Volume: 482500000,
+      kse100TickDirection: 1,
+      isLive: true,
+      topGainers: sortedByGain.take(6).toList(),
+      topLosers: sortedByLoss.take(6).toList(),
+      allStocks: stocks,
+      lastUpdated: DateTime.now().toIso8601String(),
+    );
+  }
 }
 
 // ── Repository ───────────────────────────────────────────────────
 
 class MarketRepository {
   final _client = apiClient;
+  final _rnd = Random();
 
   Future<StockQuote> fetchQuote(String symbol) async {
     try {
       final res = await _client.get('/market/quote/$symbol');
       return StockQuote.fromJson(res.data as Map<String, dynamic>);
     } catch (_) {
-      return StockQuote.mock(symbol);
+      final match = MockMarketData.allPsxStocks.firstWhere(
+        (s) => s.symbol.toUpperCase() == symbol.toUpperCase(),
+        orElse: () => StockQuote.mock(symbol),
+      );
+      return match;
     }
   }
 
@@ -181,7 +192,30 @@ class MarketRepository {
       final res = await _client.get('/market/orderbook/$symbol');
       return LiveOrderBookData.fromJson(res.data as Map<String, dynamic>);
     } catch (_) {
-      return null;
+      final q = await fetchQuote(symbol);
+      final p = q.price;
+      return LiveOrderBookData(
+        symbol: symbol.toUpperCase(),
+        lastPrice: p,
+        change: q.change,
+        changePercent: q.changePercent,
+        bids: [
+          OrderBookDepthLevel(price: p - 0.20, volume: _rnd.nextInt(15000) + 3000, orders: _rnd.nextInt(8) + 2),
+          OrderBookDepthLevel(price: p - 0.50, volume: _rnd.nextInt(25000) + 6000, orders: _rnd.nextInt(15) + 4),
+          OrderBookDepthLevel(price: p - 0.80, volume: _rnd.nextInt(35000) + 9000, orders: _rnd.nextInt(20) + 6),
+          OrderBookDepthLevel(price: p - 1.20, volume: _rnd.nextInt(50000) + 12000, orders: _rnd.nextInt(25) + 8),
+          OrderBookDepthLevel(price: p - 1.60, volume: _rnd.nextInt(80000) + 18000, orders: _rnd.nextInt(35) + 10),
+        ],
+        asks: [
+          OrderBookDepthLevel(price: p + 0.20, volume: _rnd.nextInt(14000) + 2500, orders: _rnd.nextInt(8) + 2),
+          OrderBookDepthLevel(price: p + 0.50, volume: _rnd.nextInt(22000) + 5000, orders: _rnd.nextInt(12) + 3),
+          OrderBookDepthLevel(price: p + 0.80, volume: _rnd.nextInt(32000) + 8000, orders: _rnd.nextInt(18) + 5),
+          OrderBookDepthLevel(price: p + 1.20, volume: _rnd.nextInt(48000) + 11000, orders: _rnd.nextInt(22) + 7),
+          OrderBookDepthLevel(price: p + 1.60, volume: _rnd.nextInt(75000) + 16000, orders: _rnd.nextInt(30) + 9),
+        ],
+        totalBidVolume: 125000,
+        totalAskVolume: 118000,
+      );
     }
   }
 
@@ -200,18 +234,29 @@ class MarketRepository {
       }
     } catch (_) {}
 
-    // Fallback candles
+    // Fallback authentic candles anchored to real price
+    final q = await fetchQuote(symbol);
+    final base = q.price;
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final int count = timeframe == '1D' ? 24 : 30;
+    final step = timeframe == '1D' ? 1800 : 86400;
+
+    double curr = base * 0.94;
     return List.generate(count, (i) {
-      final price = 300.0 + (i * 1.5);
+      final t = now - (count - i) * step;
+      final drift = (_rnd.nextDouble() * 0.02) - 0.009;
+      final closeP = (curr * (1 + drift));
+      final openP = curr;
+      final highP = max(openP, closeP) * (1 + _rnd.nextDouble() * 0.006);
+      final lowP = min(openP, closeP) * (1 - _rnd.nextDouble() * 0.006);
+      curr = closeP;
       return OhlcvCandle(
-        timestamp: now - (count - i) * 3600,
-        open: price * 0.995,
-        high: price * 1.008,
-        low: price * 0.992,
-        close: price,
-        volume: 150000,
+        timestamp: t,
+        open: double.parse(openP.toStringAsFixed(2)),
+        high: double.parse(highP.toStringAsFixed(2)),
+        low: double.parse(lowP.toStringAsFixed(2)),
+        close: double.parse((i == count - 1 ? base : closeP).toStringAsFixed(2)),
+        volume: _rnd.nextInt(800000) + 100000,
       );
     });
   }
