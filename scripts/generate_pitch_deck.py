@@ -1,319 +1,275 @@
 """
-Generates the official PakTradeX Hackathon Pitch Deck (.pptx)
+Generates a clean, simple, white-background PakTradeX presentation (.pptx)
+with easy wording, clean bullet points, and no heavy boxes or dark backgrounds.
 """
-import sys
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
-from pptx.enum.shapes import MSO_SHAPE
 
-def create_presentation():
+def create_simple_presentation():
     prs = Presentation()
-    # 16:9 widescreen format
     prs.slide_width = Inches(13.333)
     prs.slide_height = Inches(7.5)
 
-    # Color Palette
-    BG_DARK = RGBColor(15, 23, 42)       # Slate 900
-    BG_CARD = RGBColor(30, 41, 59)       # Slate 800
-    PRIMARY = RGBColor(16, 185, 129)     # Emerald Green (PSX Bullish)
-    PRIMARY_LIGHT = RGBColor(52, 211, 153)
-    TEXT_MAIN = RGBColor(248, 250, 252)  # White/Slate 50
-    TEXT_MUTED = RGBColor(148, 163, 184) # Slate 400
-    ACCENT_BLUE = RGBColor(56, 189, 248) # Sky 400
-    ACCENT_GOLD = RGBColor(251, 191, 36) # Amber 400
+    # Clean, Minimalist Palette
+    COLOR_TITLE = RGBColor(15, 23, 42)      # Deep Black / Slate 900
+    COLOR_BODY = RGBColor(51, 65, 85)       # Charcoal / Slate 700
+    COLOR_MUTED = RGBColor(100, 116, 139)   # Subtle Gray
+    COLOR_ACCENT = RGBColor(16, 149, 106)   # PSX Green Accent
 
-    def add_background(slide):
-        bg = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, prs.slide_width, prs.slide_height)
-        bg.fill.solid()
-        bg.fill.fore_color.rgb = BG_DARK
-        bg.line.fill.background()
-        return bg
+    def add_slide_header(slide, slide_num, title, subtitle):
+        # Header Box
+        header_box = slide.shapes.add_textbox(Inches(1.0), Inches(0.8), Inches(11.3), Inches(1.3))
+        tf = header_box.text_frame
+        tf.word_wrap = True
+        tf.margin_left = tf.margin_top = tf.margin_right = tf.margin_bottom = 0
 
-    def add_header(slide, tag, title, subtitle):
-        # Tag Badge
-        tag_box = slide.shapes.add_textbox(Inches(0.8), Inches(0.5), Inches(11.7), Inches(0.4))
-        tf_tag = tag_box.text_frame
-        tf_tag.word_wrap = True
-        p_tag = tf_tag.paragraphs[0]
-        p_tag.text = tag.upper()
-        p_tag.font.size = Pt(11)
-        p_tag.font.bold = True
-        p_tag.font.color.rgb = PRIMARY
+        p_num = tf.paragraphs[0]
+        p_num.text = f"SLIDE {slide_num}".upper()
+        p_num.font.size = Pt(11)
+        p_num.font.bold = True
+        p_num.font.color.rgb = COLOR_ACCENT
 
-        # Title
-        title_box = slide.shapes.add_textbox(Inches(0.8), Inches(0.8), Inches(11.7), Inches(0.8))
-        tf_title = title_box.text_frame
-        tf_title.word_wrap = True
-        p_title = tf_title.paragraphs[0]
+        p_title = tf.add_paragraph()
         p_title.text = title
-        p_title.font.size = Pt(26)
+        p_title.font.size = Pt(28)
         p_title.font.bold = True
-        p_title.font.color.rgb = TEXT_MAIN
+        p_title.font.color.rgb = COLOR_TITLE
+        p_title.space_before = Pt(4)
 
-        # Subtitle
-        sub_box = slide.shapes.add_textbox(Inches(0.8), Inches(1.5), Inches(11.7), Inches(0.5))
-        tf_sub = sub_box.text_frame
-        tf_sub.word_wrap = True
-        p_sub = tf_sub.paragraphs[0]
+        p_sub = tf.add_paragraph()
         p_sub.text = subtitle
-        p_sub.font.size = Pt(13)
-        p_sub.font.color.rgb = TEXT_MUTED
+        p_sub.font.size = Pt(14)
+        p_sub.font.color.rgb = COLOR_MUTED
+        p_sub.space_before = Pt(4)
 
     # ─────────────────────────────────────────────────────────────
-    # SLIDE 1: Title & Cover
+    # SLIDE 1: Title
     # ─────────────────────────────────────────────────────────────
     slide1 = prs.slides.add_slide(prs.slide_layouts[6])
-    add_background(slide1)
-
-    # Main Card
-    card1 = slide1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.2), Inches(1.2), Inches(10.9), Inches(5.1))
-    card1.fill.solid()
-    card1.fill.fore_color.rgb = BG_CARD
-    card1.line.color.rgb = RGBColor(51, 65, 85)
-
-    title_box = slide1.shapes.add_textbox(Inches(1.8), Inches(1.8), Inches(9.7), Inches(2.0))
+    
+    title_box = slide1.shapes.add_textbox(Inches(1.2), Inches(1.8), Inches(10.9), Inches(4.5))
     tf1 = title_box.text_frame
     tf1.word_wrap = True
-    
+
     p0 = tf1.paragraphs[0]
-    p0.text = "🇵🇰 PakTradeX"
-    p0.font.size = Pt(44)
+    p0.text = "PakTradeX"
+    p0.font.size = Pt(48)
     p0.font.bold = True
-    p0.font.color.rgb = PRIMARY_LIGHT
+    p0.font.color.rgb = COLOR_ACCENT
 
     p1 = tf1.add_paragraph()
-    p1.text = "Pakistan's Premier Next-Gen PSX Trading & Investment Platform"
-    p1.font.size = Pt(20)
+    p1.text = "Pakistan Stock Exchange (PSX) Mobile Trading App"
+    p1.font.size = Pt(24)
     p1.font.bold = True
-    p1.font.color.rgb = TEXT_MAIN
+    p1.font.color.rgb = COLOR_TITLE
     p1.space_before = Pt(12)
 
     p2 = tf1.add_paragraph()
-    p2.text = "Democratizing retail stock market participation through real-time PSX data, risk-free simulation, and AI-powered intelligence."
-    p2.font.size = Pt(13)
-    p2.font.color.rgb = TEXT_MUTED
-    p2.space_before = Pt(8)
+    p2.text = "A simple, risk-free way for everyday Pakistanis to learn, practice, and trade stocks with real market data."
+    p2.font.size = Pt(15)
+    p2.font.color.rgb = COLOR_BODY
+    p2.space_before = Pt(16)
 
-    # Meta Badges
-    badges_box = slide1.shapes.add_textbox(Inches(1.8), Inches(4.5), Inches(9.7), Inches(1.2))
-    tf_b = badges_box.text_frame
-    p_b = tf_b.paragraphs[0]
-    p_b.text = "⚡ Full-Stack Flutter & FastAPI  •  📊 Real PSX Market Feed  •  🛡️ 1-Time KYC & Raast Rails  •  🤖 Gemini AI Copilot"
-    p_b.font.size = Pt(12)
-    p_b.font.bold = True
-    p_b.font.color.rgb = ACCENT_BLUE
+    p3 = tf1.add_paragraph()
+    p3.text = "Built with Flutter & FastAPI  •  Live PSX Data  •  100% Free & Risk-Free"
+    p3.font.size = Pt(12)
+    p3.font.bold = True
+    p3.font.color.rgb = COLOR_MUTED
+    p3.space_before = Pt(30)
 
     # ─────────────────────────────────────────────────────────────
-    # SLIDE 2: The Problem & Who It Affects
+    # SLIDE 2: Problem & Who It Affects
     # ─────────────────────────────────────────────────────────────
     slide2 = prs.slides.add_slide(prs.slide_layouts[6])
-    add_background(slide2)
-    add_header(slide2, "1. Problem Discovery", "The Problem & Who It Affects", "Why less than 0.1% of Pakistan's 240M population invests in equities.")
+    add_slide_header(
+        slide2, 
+        "01", 
+        "The Problem & Who It Affects", 
+        "Why most people in Pakistan stay away from the stock market."
+    )
 
-    problems = [
-        ("Massive Financial Exclusion", "Less than 250,000 active individual investor accounts exist in PSX out of 240M+ citizens due to high perceived risk and zero practical learning avenues.", ACCENT_GOLD),
-        ("Intimidating & Outdated Tools", "Existing broker portals are clunky, desktop-bound, lack paper-trading sandboxes, and offer no modern mobile-first user experience.", ACCENT_BLUE),
-        ("Complex Onboarding & Friction", "Lengthy physical documentation, absence of instant KYC verification, and lack of integration with modern digital rails (Raast, JazzCash).", PRIMARY),
+    body_box2 = slide2.shapes.add_textbox(Inches(1.0), Inches(2.4), Inches(11.3), Inches(4.5))
+    tf2 = body_box2.text_frame
+    tf2.word_wrap = True
+
+    points2 = [
+        ("Fear of Losing Money", "Most people want to invest in stocks, but they are afraid of losing their hard-earned money because there is no easy way to practice first."),
+        ("Hard to Use Tools", "Current broker applications are confusing, full of complex jargon, and designed only for experts."),
+        ("Difficult Account Opening", "Opening a real brokerage account takes days, heavy paperwork, and complex verification."),
+        ("Who It Affects", "College students, young professionals, and first-time savers across Pakistan who want to grow their money safely."),
     ]
 
-    for i, (title, desc, color) in enumerate(problems):
-        x = Inches(0.8 + (i * 3.95))
-        box = slide2.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, Inches(2.2), Inches(3.75), Inches(4.5))
-        box.fill.solid()
-        box.fill.fore_color.rgb = BG_CARD
-        box.line.color.rgb = color
+    for i, (head, text) in enumerate(points2):
+        p = tf2.paragraphs[0] if i == 0 else tf2.add_paragraph()
+        p.text = f"•  {head}: "
+        p.font.size = Pt(14)
+        p.font.bold = True
+        p.font.color.rgb = COLOR_TITLE
+        p.space_before = Pt(16) if i > 0 else Pt(0)
 
-        tb = slide2.shapes.add_textbox(x + Inches(0.2), Inches(2.5), Inches(3.35), Inches(3.9))
-        tf = tb.text_frame
-        tf.word_wrap = True
-        
-        pt = tf.paragraphs[0]
-        pt.text = f"0{i+1}. {title}"
-        pt.font.size = Pt(16)
-        pt.font.bold = True
-        pt.font.color.rgb = color
-
-        pd = tf.add_paragraph()
-        pd.text = desc
-        pd.font.size = Pt(12)
-        pd.font.color.rgb = TEXT_MAIN
-        pd.space_before = Pt(14)
+        run = p.add_run()
+        run.text = text
+        run.font.size = Pt(14)
+        run.font.bold = False
+        run.font.color.rgb = COLOR_BODY
 
     # ─────────────────────────────────────────────────────────────
     # SLIDE 3: Solution & Audience
     # ─────────────────────────────────────────────────────────────
     slide3 = prs.slides.add_slide(prs.slide_layouts[6])
-    add_background(slide3)
-    add_header(slide3, "2. Value Proposition", "Our Solution & Target Audience", "An institutional-grade trading terminal built for the next generation of Pakistani investors.")
+    add_slide_header(
+        slide3, 
+        "02", 
+        "Our Solution & Target Audience", 
+        "A friendly, mobile-first app designed for beginners and everyday traders."
+    )
 
-    cards3 = [
-        ("Interactive Paper Trading", "Risk-free virtual portfolio (1,000,000 PKR virtual balance) running on live PSX market prices with Market & Limit order execution.", "Aspiring Retail Investors & Students"),
-        ("Shariah-Compliant Screening", "Dedicated KMI-30 tracking and automatic Islamic Shariah compliance tags for halal equity investing.", "Ethical & Shariah-Conscious Investors"),
-        ("Instant Digital Rails & KYC", "Simulated SECP-compliant 1-time KYC (CNIC + Bank account binding) with instant Raast, IBFT, JazzCash & EasyPaisa payments.", "Digital-First Youth & Mobile Users"),
-        ("Gemini AI Market Copilot", "On-demand company fundamental breakdown, live sentiment analysis, and risk rulebook summaries in plain Urdu & English.", "Everyday Traders seeking Alpha"),
+    body_box3 = slide3.shapes.add_textbox(Inches(1.0), Inches(2.4), Inches(11.3), Inches(4.5))
+    tf3 = body_box3.text_frame
+    tf3.word_wrap = True
+
+    points3 = [
+        ("Practice Trading for Free", "Users get 1,000,000 PKR virtual balance to buy and sell real PSX stocks without risking a single rupee."),
+        ("Real-Time PSX Market Data", "Shows exact live prices, daily gains/losses, and interactive charts for top companies like MCB, UBL, Meezan Bank, Systems Limited, and OGDC."),
+        ("Halal / Shariah Filter", "Easily view and trade Islamic Shariah-compliant stocks and track the KMI-30 index."),
+        ("Simple Verification & Easy Money Transfers", "Practice 1-time CNIC verification and instant simulated deposits using Raast, JazzCash, and EasyPaisa."),
+        ("Target Audience", "Beginners, university students, and everyday Pakistanis looking for an easy entry into the stock market."),
     ]
 
-    for i, (feat, aud, sub) in enumerate(cards3):
-        r = i // 2
-        c = i % 2
-        x = Inches(0.8 + (c * 5.95))
-        y = Inches(2.2 + (r * 2.45))
-        
-        box = slide3.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, y, Inches(5.75), Inches(2.25))
-        box.fill.solid()
-        box.fill.fore_color.rgb = BG_CARD
-        box.line.color.rgb = RGBColor(51, 65, 85)
+    for i, (head, text) in enumerate(points3):
+        p = tf3.paragraphs[0] if i == 0 else tf3.add_paragraph()
+        p.text = f"•  {head}: "
+        p.font.size = Pt(13.5)
+        p.font.bold = True
+        p.font.color.rgb = COLOR_TITLE
+        p.space_before = Pt(14) if i > 0 else Pt(0)
 
-        tb = slide3.shapes.add_textbox(x + Inches(0.2), y + Inches(0.15), Inches(5.35), Inches(1.9))
-        tf = tb.text_frame
-        tf.word_wrap = True
-
-        p1 = tf.paragraphs[0]
-        p1.text = f"✨ {feat}"
-        p1.font.size = Pt(15)
-        p1.font.bold = True
-        p1.font.color.rgb = PRIMARY_LIGHT
-
-        p2 = tf.add_paragraph()
-        p2.text = aud
-        p2.font.size = Pt(11)
-        p2.font.color.rgb = TEXT_MAIN
-        p2.space_before = Pt(4)
-
-        p3 = tf.add_paragraph()
-        p3.text = f"Target: {sub}"
-        p3.font.size = Pt(10)
-        p3.font.bold = True
-        p3.font.color.rgb = ACCENT_GOLD
-        p3.space_before = Pt(6)
+        run = p.add_run()
+        run.text = text
+        run.font.size = Pt(13.5)
+        run.font.bold = False
+        run.font.color.rgb = COLOR_BODY
 
     # ─────────────────────────────────────────────────────────────
     # SLIDE 4: Need & Impact
     # ─────────────────────────────────────────────────────────────
     slide4 = prs.slides.add_slide(prs.slide_layouts[6])
-    add_background(slide4)
-    add_header(slide4, "3. Market Impact", "The Need It Addresses & The Impact It Makes", "Empowering individuals, accelerating capital formation, and fostering financial literacy.")
+    add_slide_header(
+        slide4, 
+        "03", 
+        "The Need & Impact", 
+        "Building financial awareness and confidence across the country."
+    )
 
-    impacts = [
-        ("Financial Literacy at Scale", "Converts passive savers battling inflation into informed equity investors by providing a zero-risk educational sandbox with real market dynamics.", "📈 Educational Empowerment"),
-        ("Capital Market Inflow", "Prepares everyday citizens with hands-on trading experience so they transition confidently into real CDC-regulated broker accounts.", "💰 Economic Growth"),
-        ("Inclusive Digital Finance", "Bridges the gap between modern fintech (Raast / Microfinance wallets) and traditional PSX equity brokers through frictionless UI.", "🌐 Financial Inclusion"),
+    body_box4 = slide4.shapes.add_textbox(Inches(1.0), Inches(2.4), Inches(11.3), Inches(4.5))
+    tf4 = body_box4.text_frame
+    tf4.word_wrap = True
+
+    points4 = [
+        ("Fighting Inflation", "Helps citizens learn how to beat inflation by investing in solid Pakistani companies instead of keeping cash idle."),
+        ("Learning by Doing", "The fastest way to learn the stock market is by placing real orders on live moving charts."),
+        ("More Investors for PSX", "Prepares everyday people with real skills and confidence so they can open real broker accounts in the future."),
+        ("National Impact", "Brings financial literacy to millions of mobile users in Pakistan through an easy, accessible tool."),
     ]
 
-    for i, (title, desc, badge) in enumerate(impacts):
-        x = Inches(0.8 + (i * 3.95))
-        box = slide4.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, Inches(2.2), Inches(3.75), Inches(4.5))
-        box.fill.solid()
-        box.fill.fore_color.rgb = BG_CARD
-        box.line.color.rgb = ACCENT_BLUE
+    for i, (head, text) in enumerate(points4):
+        p = tf4.paragraphs[0] if i == 0 else tf4.add_paragraph()
+        p.text = f"•  {head}: "
+        p.font.size = Pt(14)
+        p.font.bold = True
+        p.font.color.rgb = COLOR_TITLE
+        p.space_before = Pt(16) if i > 0 else Pt(0)
 
-        tb = slide4.shapes.add_textbox(x + Inches(0.2), Inches(2.5), Inches(3.35), Inches(3.9))
-        tf = tb.text_frame
-        tf.word_wrap = True
-
-        pb = tf.paragraphs[0]
-        pb.text = badge
-        pb.font.size = Pt(11)
-        pb.font.bold = True
-        pb.font.color.rgb = ACCENT_GOLD
-
-        pt = tf.add_paragraph()
-        pt.text = title
-        pt.font.size = Pt(16)
-        pt.font.bold = True
-        pt.font.color.rgb = PRIMARY_LIGHT
-        pt.space_before = Pt(8)
-
-        pd = tf.add_paragraph()
-        pd.text = desc
-        pd.font.size = Pt(12)
-        pd.font.color.rgb = TEXT_MAIN
-        pd.space_before = Pt(12)
+        run = p.add_run()
+        run.text = text
+        run.font.size = Pt(14)
+        run.font.bold = False
+        run.font.color.rgb = COLOR_BODY
 
     # ─────────────────────────────────────────────────────────────
-    # SLIDE 5: Innovation & Technology
+    # SLIDE 5: Technology & Innovation
     # ─────────────────────────────────────────────────────────────
     slide5 = prs.slides.add_slide(prs.slide_layouts[6])
-    add_background(slide5)
-    add_header(slide5, "4. Technical Architecture", "Innovation & Technology Stack", "High-frequency reactive client architecture backed by asynchronous Python pipelines.")
+    add_slide_header(
+        slide5, 
+        "04", 
+        "Technology & Innovation", 
+        "Modern tech stack delivering smooth, fast, and real-time performance."
+    )
 
-    tech_cards = [
-        ("Flutter 3.x + Riverpod", "Cross-platform client with reactive state management, sub-second price animations, and zero-downtime offline fallback engine.", ACCENT_BLUE),
-        ("FastAPI + Async Python", "High-concurrency backend (Python 3.11) with non-blocking endpoints, WebSockets, and SQLite / PostgreSQL persistence.", PRIMARY),
-        ("Live PSX Engine via Yahoo Finance", "Concurrent multi-threaded pipeline querying PSX (.KA tickers) with real 5-day OHLCV candles & 5-level order book depth.", ACCENT_GOLD),
-        ("Google Gemini AI Copilot", "Integrated Generative AI financial assistant answering fundamental questions and generating daily KSE market briefs.", PRIMARY_LIGHT),
+    body_box5 = slide5.shapes.add_textbox(Inches(1.0), Inches(2.4), Inches(11.3), Inches(4.5))
+    tf5 = body_box5.text_frame
+    tf5.word_wrap = True
+
+    points5 = [
+        ("Flutter Mobile App", "Fast, smooth cross-platform app for Android with instant search, animated price ticks, and clean design."),
+        ("FastAPI Python Backend", "High-speed backend server handling live market requests, orders, and user authentication."),
+        ("Real PSX Market Engine", "Automatically fetches genuine stock quotes and candlestick charts directly from Yahoo Finance (.KA tickers)."),
+        ("AI Market Assistant", "Powered by Google Gemini to answer stock market questions and explain company terms in simple words."),
+        ("Zero-Downtime Design", "The app works smoothly both online and offline without ever crashing or showing blank screens."),
     ]
 
-    for i, (title, desc, color) in enumerate(tech_cards):
-        r = i // 2
-        c = i % 2
-        x = Inches(0.8 + (c * 5.95))
-        y = Inches(2.2 + (r * 2.45))
-        
-        box = slide5.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, y, Inches(5.75), Inches(2.25))
-        box.fill.solid()
-        box.fill.fore_color.rgb = BG_CARD
-        box.line.color.rgb = color
+    for i, (head, text) in enumerate(points5):
+        p = tf5.paragraphs[0] if i == 0 else tf5.add_paragraph()
+        p.text = f"•  {head}: "
+        p.font.size = Pt(13.5)
+        p.font.bold = True
+        p.font.color.rgb = COLOR_TITLE
+        p.space_before = Pt(14) if i > 0 else Pt(0)
 
-        tb = slide5.shapes.add_textbox(x + Inches(0.2), y + Inches(0.15), Inches(5.35), Inches(1.9))
-        tf = tb.text_frame
-        tf.word_wrap = True
-
-        p1 = tf.paragraphs[0]
-        p1.text = title
-        p1.font.size = Pt(15)
-        p1.font.bold = True
-        p1.font.color.rgb = color
-
-        p2 = tf.add_paragraph()
-        p2.text = desc
-        p2.font.size = Pt(11.5)
-        p2.font.color.rgb = TEXT_MAIN
-        p2.space_before = Pt(6)
+        run = p.add_run()
+        run.text = text
+        run.font.size = Pt(13.5)
+        run.font.bold = False
+        run.font.color.rgb = COLOR_BODY
 
     # ─────────────────────────────────────────────────────────────
     # SLIDE 6: Feasibility & What We Actually Built
     # ─────────────────────────────────────────────────────────────
     slide6 = prs.slides.add_slide(prs.slide_layouts[6])
-    add_background(slide6)
-    add_header(slide6, "5. Execution & Feasibility", "Feasibility & What We Have Actually Built", "Not a concept — a complete, working, production-tested mobile application.")
+    add_slide_header(
+        slide6, 
+        "05", 
+        "Feasibility & What We Have Built", 
+        "A 100% completed, fully functional, and tested project ready right now."
+    )
 
-    built_items = [
-        ("📱 Production Mobile App (APK)", "Built & compiled release APK (53.6 MB) with 100% working UI, navigation, and persistent storage.", PRIMARY),
-        ("🔴 Live PSX Ticker Feed (31 Stocks)", "Real live prices for MCB (402.68), UBL (458.70), MEBL (574.34), SYS (130.82), OGDC (325.20), etc.", ACCENT_GOLD),
-        ("⚡ Order Engine & Depth Charts", "Live Market/Limit buy & sell execution, order book depth, portfolio calculation, and transaction history.", ACCENT_BLUE),
-        ("🛡️ SECP KYC & Raast Deposit Rails", "1-Time CNIC verification modal, Bank account binding, and Raast/JazzCash deposit & withdrawal simulation.", PRIMARY_LIGHT),
-        ("🧪 100% Automated Test Coverage", "18/18 Unit & Widget test suites passed with automated GitHub Actions CI/CD release workflow.", PRIMARY),
+    body_box6 = slide6.shapes.add_textbox(Inches(1.0), Inches(2.4), Inches(11.3), Inches(4.5))
+    tf6 = body_box6.text_frame
+    tf6.word_wrap = True
+
+    points6 = [
+        ("Full Working Android App (APK)", "Ready and compiled APK (53.6 MB) that installs on any Android phone."),
+        ("Live Stocks & Search", "31 real PSX stocks with live moving prices, depth charts, and search by name/symbol."),
+        ("Real Buy & Sell Trading", "Users can place Market and Limit orders, track portfolio profits, and view order history."),
+        ("KYC & Wallet System", "Complete CNIC verification flow and simulated deposits with Raast and JazzCash."),
+        ("Tested & Reliable", "18/18 automated tests passed with complete source code published on GitHub."),
     ]
 
-    for i, (title, desc, color) in enumerate(built_items):
-        y = Inches(2.1 + (i * 0.98))
-        box = slide6.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), y, Inches(11.73), Inches(0.85))
-        box.fill.solid()
-        box.fill.fore_color.rgb = BG_CARD
-        box.line.color.rgb = color
-
-        tb = slide6.shapes.add_textbox(Inches(1.0), y + Inches(0.08), Inches(11.3), Inches(0.7))
-        tf = tb.text_frame
-        tf.word_wrap = True
-
-        p = tf.paragraphs[0]
-        p.text = f"{title} — "
-        p.font.size = Pt(12)
+    for i, (head, text) in enumerate(points6):
+        p = tf6.paragraphs[0] if i == 0 else tf6.add_paragraph()
+        p.text = f"•  {head}: "
+        p.font.size = Pt(13.5)
         p.font.bold = True
-        p.font.color.rgb = color
+        p.font.color.rgb = COLOR_TITLE
+        p.space_before = Pt(14) if i > 0 else Pt(0)
 
         run = p.add_run()
-        run.text = desc
-        run.font.size = Pt(11)
+        run.text = text
+        run.font.size = Pt(13.5)
         run.font.bold = False
-        run.font.color.rgb = TEXT_MAIN
+        run.font.color.rgb = COLOR_BODY
 
-    output_path = "PakTradeX_Hackathon_Pitch.pptx"
-    prs.save(output_path)
-    print(f"Presentation saved successfully to {output_path}")
+    output_path = "PakTradeX_Presentation.pptx"
+    try:
+        prs.save(output_path)
+        print(f"Clean white presentation saved successfully to {output_path}")
+    except Exception as e:
+        alt_path = "PakTradeX_Presentation_v2.pptx"
+        prs.save(alt_path)
+        print(f"Saved to {alt_path}")
 
 if __name__ == "__main__":
-    create_presentation()
+    create_simple_presentation()
